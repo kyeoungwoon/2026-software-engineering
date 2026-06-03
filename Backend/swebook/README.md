@@ -29,6 +29,13 @@ MySQL은 `docker-compose.yml`로 실행합니다.
 docker compose up -d
 ```
 
+MySQL 컨테이너를 최초로 띄울 때 Docker init script가 아래 SQL 파일을 실행합니다.
+
+- `db/init/01-schema.sql`: 테이블 생성
+- `db/init/02-data.sql`: 초기 데이터 시딩
+
+`docker-compose.yml`은 `db/init` 디렉터리를 `/docker-entrypoint-initdb.d`로 마운트합니다. MySQL 공식 이미지의 init script는 데이터 볼륨이 비어 있는 최초 생성 시점에만 실행됩니다.
+
 컨테이너 상태 확인:
 
 ```bash
@@ -47,6 +54,13 @@ MySQL 데이터까지 삭제:
 docker compose down -v
 ```
 
+스키마와 시딩을 처음부터 다시 적용하려면 데이터 볼륨을 삭제한 뒤 다시 실행합니다.
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
 ## DB 접속 정보
 
 ```text
@@ -58,7 +72,7 @@ Password: swebook_password
 Root Password: root_password
 ```
 
-Spring Boot datasource 설정은 `src/main/resources/application.properties`에 로컬 개발용으로 직접 명시되어 있습니다.
+Spring Boot datasource 설정은 `src/main/resources/application.properties`에 로컬 개발용으로 직접 명시되어 있습니다. 스키마 생성과 시딩은 Spring Boot가 아니라 Docker MySQL init script가 담당합니다.
 
 ## 프로젝트 실행
 
@@ -99,4 +113,6 @@ http://localhost:8080
 - `build.gradle`: Gradle 빌드 및 의존성 설정
 - `settings.gradle`: 프로젝트 이름 및 Java toolchain resolver 설정
 - `docker-compose.yml`: 로컬 MySQL 컨테이너 설정
+- `db/init/01-schema.sql`: Docker MySQL 최초 테이블 생성 스크립트
+- `db/init/02-data.sql`: Docker MySQL 최초 시딩 스크립트
 - `src/main/resources/application.properties`: Spring Boot 및 MySQL 연결 설정
