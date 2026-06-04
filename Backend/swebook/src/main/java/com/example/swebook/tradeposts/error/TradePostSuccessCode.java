@@ -16,6 +16,9 @@ public final class TradePostSuccessCode {
     public static final ApiResponse.SuccessCode TRADE_POST_STATUS_UPDATED =
             ApiResponse.SuccessCode.of("TRADE_POST_STATUS_UPDATED", "판매글 상태가 변경되었습니다.");
 
+    public static final ApiResponse.SuccessCode TRADE_POST_DELETED =
+            ApiResponse.SuccessCode.of("TRADE_POST_DELETED", "판매글이 삭제되었습니다.");
+
     private TradePostSuccessCode() {
     }
 }

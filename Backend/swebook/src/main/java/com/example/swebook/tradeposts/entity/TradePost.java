@@ -77,6 +77,10 @@ public class TradePost {
         this.status = status;
     }
 
+    public void delete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
     public Long getPostId() {
         return postId;
     }

@@ -4,6 +4,7 @@ import com.example.swebook.global.error.BusinessException;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
+import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
@@ -25,6 +26,7 @@ import com.example.swebook.traderequests.repository.TradeRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -133,5 +135,14 @@ public class TradePostService {
         tradePost.updateStatus(request.status());
 
         return UpdateTradePostStatusResponse.from(tradePost);
+    }
+
+    @Transactional
+    public DeleteTradePostResponse deleteTradePost(Long postId) {
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        tradePost.delete(LocalDateTime.now());
+
+        return DeleteTradePostResponse.from(tradePost);
     }
 }

@@ -4,6 +4,7 @@ import com.example.swebook.global.response.ApiResponse;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
+import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
@@ -12,6 +13,7 @@ import com.example.swebook.tradeposts.error.TradePostSuccessCode;
 import com.example.swebook.tradeposts.service.TradePostService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -74,6 +76,14 @@ public class TradePostController {
         return ApiResponse.success(
                 tradePostService.updateTradePostStatus(postId, request),
                 TradePostSuccessCode.TRADE_POST_STATUS_UPDATED
+        );
+    }
+
+    @DeleteMapping("/{postId}")
+    public ApiResponse<DeleteTradePostResponse> deleteTradePost(@PathVariable Long postId) {
+        return ApiResponse.success(
+                tradePostService.deleteTradePost(postId),
+                TradePostSuccessCode.TRADE_POST_DELETED
         );
     }
 }
