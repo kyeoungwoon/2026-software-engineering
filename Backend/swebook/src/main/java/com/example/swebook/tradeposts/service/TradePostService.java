@@ -171,7 +171,10 @@ public class TradePostService {
 
     @Transactional
     public UploadTradePostImagesResponse uploadTradePostImages(Long postId, List<MultipartFile> images) {
-        if (images == null || images.isEmpty() || images.stream().anyMatch(MultipartFile::isEmpty)) {
+        if (images == null || images.isEmpty()
+                || images.stream().anyMatch(image -> image.isEmpty()
+                || image.getContentType() == null
+                || !image.getContentType().startsWith("image/"))) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
 
