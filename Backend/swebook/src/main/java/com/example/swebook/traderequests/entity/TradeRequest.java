@@ -51,6 +51,16 @@ public class TradeRequest {
     protected TradeRequest() {
     }
 
+    public static TradeRequest create(User user, TradePost tradePost, TradeAvailableTime availableTime) {
+        TradeRequest tradeRequest = new TradeRequest();
+        tradeRequest.user = user;
+        tradeRequest.tradePost = tradePost;
+        tradeRequest.availableTime = availableTime;
+        tradeRequest.status = TradeRequestStatus.PENDING;
+        tradeRequest.createdAt = LocalDateTime.now();
+        return tradeRequest;
+    }
+
     public Long getRequestId() {
         return requestId;
     }

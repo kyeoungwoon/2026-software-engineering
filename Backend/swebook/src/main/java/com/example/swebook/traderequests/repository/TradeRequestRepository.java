@@ -10,4 +10,6 @@ public interface TradeRequestRepository extends JpaRepository<TradeRequest, Long
 
     @EntityGraph(attributePaths = {"user", "tradePost", "tradePost.book", "tradePost.seller", "availableTime"})
     Optional<TradeRequest> findWithDetailsByRequestId(Long requestId);
+
+    boolean existsByUserUserIdAndTradePostPostId(Long userId, Long postId);
 }

@@ -259,3 +259,223 @@ ddedebd feat: me 도메인 구조 확립 및 사용자 조회 api 생성
 c18a765 feat: trade-requests 도메인 구조 확립 및 조회 api 생성
 2cee1cf feat: me 도메인 구매 및 판매 요청 조회 api 생성
 ```
+
+## Trade-posts 도메인 추가 구현 프롬프트
+
+### 1. 판매글 상세 조회 API 구현
+
+```text
+/api/trade-posts/{postId} 판매글 상세 조회 api를 만들거야 쿼리 파라미터로 Postid받아오고, {
+  "success": true,
+  "successCode": {
+    "httpStatus": "200 OK",
+    "code": "TRADE_POST_FOUND",
+    "message": "판매글 상세 조회에 성공했습니다."
+  },
+  "data": {
+    "postId": 100,
+    "seller": {
+      "userId": 1,
+      "nickname": "도현"
+    },
+    "book": {
+      "bookId": 10,
+      "title": "운영체제와 정보기술의 원리",
+      "author": "반효경",
+      "publisher": "이화여자대학교출판문화원",
+      "edition": "개정판",
+      "isbn": "9788973000000"
+    },
+    "category": {
+      "categoryCode": "100101",
+      "parentCode": "100000",
+      "type": "COURSE",
+      "name": "운영체제"
+    },
+    "price": 18000,
+    "description": "운영체제 수업에서 사용한 책입니다. 필기 조금 있습니다.",
+    "status": "AVAILABLE",
+    "placeName": "건국대학교 학생회관 앞",
+    "detailAddress": "정문 근처",
+    "latitude": 37.5401234,
+    "longitude": 127.0694567,
+    "images": [
+      {
+        "imageId": 1,
+        "imageUrl": "https://cdn.example.com/books/os-book-1.jpg",
+        "isCover": true
+      }
+    ],
+    "availableTimes": [
+      {
+        "id": "time-1",
+        "startAt": "2026-05-29T13:00:00",
+        "endAt": "2026-05-29T15:00:00"
+      }
+    ],
+    "createdAt": "2026-05-28T06:21:27.741Z",
+    "updatedAt": "2026-05-28T06:21:27.741Z"
+  },
+  "meta": {
+    "time-stamp": "2026-05-28T06:21:27.741Z"
+  }
+} 아래와 같은 정보들을 모두 반환해주는 api 구현해줘
+```
+
+주요 출력:
+
+```text
+GET /api/trade-posts/{postId}
+successCode.code = TRADE_POST_FOUND
+seller, book, category, images, availableTimes 포함 상세 응답 구현
+```
+
+### 2. detailAddress 제거 요청
+
+```text
+아 추가적으로 deatil_address 칼럼 없다고 그랬었잖아 ? 그 칼럼은 없는게 맞고 , place_name하나로 두기로했어
+```
+
+주요 출력:
+
+```text
+TradePostDetailResponse에서 detailAddress 필드를 제거하고 placeName만 응답하도록 수정
+```
+
+### 3. 판매글 거래 가능 시간 조회 API 구현
+
+```text
+/api/trade-posts/{postId}/available-times 해당 api구현할거야. 앞으로 trade-posts도메인 api를 구현할거고, 쿼리 파라미터로 postID를 받아온후 , reponse body로ㅡㄴ {
+  "success": true,
+  "successCode": {
+    "httpStatus": "200 OK",
+    "code": "AVAILABLE_TIMES_FOUND",
+    "message": "거래 가능 시간 조회에 성공했습니다."
+  },
+  "data": {
+    "postId": 100,
+    "availableTimes": [
+      {
+        "id": "1",
+        "startAt": "2026-05-29T13:00:00",
+        "endAt": "2026-05-29T15:00:00",
+        "isRequested": false
+      },
+      {
+        "id": "2",
+        "startAt": "2026-05-30T18:00:00",
+        "endAt": "2026-05-30T20:00:00",
+        "isRequested": true
+      }
+    ]
+  },
+  "meta": {
+    "time-stamp": "2026-05-28T06:21:27.741Z"
+  }
+} 이렇게 나타나는 api구현해줘 test까지 진행해 모든 권한 다 줄테니
+```
+
+주요 출력:
+
+```text
+GET /api/trade-posts/{postId}/available-times
+successCode.code = AVAILABLE_TIMES_FOUND
+각 거래 가능 시간별 isRequested 포함 응답 구현
+```
+
+### 4. 판매글 구매 요청 생성 API 구현
+
+```text
+/api/trade-posts/{postId}/requests 해당 api구현하려고해. 쿼리 파라미터로 받아온 Postid에 대한 현재 user의 trade-request를 생성하는 api야. request body로는 {
+  "userId": 5,
+  "availableTime": "2026-05-29T13:00:00"
+} 두가지 값을 받아주고, reponse body로는 {
+  "success": true,
+  "successCode": {
+    "httpStatus": "201 CREATED",
+    "code": "TRADE_REQUEST_CREATED",
+    "message": "구매 요청이 생성되었습니다."
+  },
+  "data": {
+    "requestId": 500,
+    "postId": 100,
+    "buyer": {
+      "userId": 5,
+      "nickname": "서원"
+    },
+    "seller": {
+      "userId": 1,
+      "nickname": "도현"
+    },
+    "availableTime": "2026-05-29T13:00:00"
+    ,
+    "requestStatus": "PENDING",
+    "createdAt": "2026-05-28T06:21:27.741Z"
+  },
+  "meta": {
+    "time-stamp": "2026-05-28T06:21:27.741Z"
+  }
+} 이 값들 반환해주는걸로 구현해줘
+```
+
+주요 출력:
+
+```text
+POST /api/trade-posts/{postId}/requests
+HTTP 201
+successCode.code = TRADE_REQUEST_CREATED
+중복 요청, 판매자 본인 요청, 거래 가능 시간 없음 에러 처리 구현
+```
+
+### 5. availableTime 매칭 방식 확인
+
+```text
+지금 trade_available time과 정확히 일치한는경우로 구현한거야 ? 아니면 start_at 과 end_at 사이에 존재하는 시간인지 확인하는것으로 구현한거야 ? 짧게 대답해봐
+```
+
+주요 출력:
+
+```text
+정확히 일치하는 경우로 구현했습니다.
+즉 request body의 availableTime이 trade_available_time.start_at과 같아야 생성됩니다.
+```
+
+### 6. availableTime 범위 포함 로직으로 변경
+
+```text
+그럼 비즈니스 로직에서 사이 포함여부로 구현해줘. postid에 해당하는 게시글에 해당하는 모든 거래가능한 시간인 available time 들을 조회하고, 그 시간 사이에 존재하는 경우에만 success를 반환하는걸로 하고, 만약 available time에 존재하지 않는경우 에러처리를 해줘
+```
+
+주요 출력:
+
+```text
+start_at <= 요청 availableTime < end_at 조건으로 구매 요청 생성 가능 여부를 판단하도록 변경
+범위 밖이면 TRADE_REQUEST_404_002 반환
+```
+
+### 7. 작업 재개 요청
+
+```text
+다시 아까 하던 작업 진행해줘
+```
+
+주요 출력:
+
+```text
+범위 포함 로직의 실제 curl 검증을 이어서 수행
+성공 케이스: 2026-06-07T17:30:00 -> 201 CREATED
+실패 케이스: 2026-06-08T13:30:00 -> 404 TRADE_REQUEST_404_002
+```
+
+### 8. PR 생성 및 프롬프트 저장 요청
+
+```text
+마찬가지로 현재까지 진행한 부분에대하여 pr 동일한 형태로 만들어줘 그리고 보고서를 위한 프롬프트 저장까지 진행해줘
+```
+
+주요 출력:
+
+```text
+현재까지 구현한 trade-posts API 변경사항을 PR 본문 형식으로 정리
+보고서용 PROMPT_LOG_EXACT.md에 최근 프롬프트 기록 추가
+```
