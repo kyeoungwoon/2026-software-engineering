@@ -57,6 +57,18 @@ public record ApiResponse<T>(
         public static SuccessCode of(String code, String message) {
             return new SuccessCode("200 OK", code, message);
         }
+
+        public static SuccessCode of(String httpStatus, String code, String message) {
+            return new SuccessCode(httpStatus, code, message);
+        }
+
+        public static SuccessCode of(HttpStatus httpStatus, String code, String message) {
+            return new SuccessCode(
+                    httpStatus.value() + " " + httpStatus.getReasonPhrase(),
+                    code,
+                    message
+            );
+        }
     }
 
     public record ErrorCodeResponse(
