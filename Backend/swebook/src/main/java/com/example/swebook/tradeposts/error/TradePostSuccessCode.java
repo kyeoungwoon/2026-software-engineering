@@ -13,6 +13,9 @@ public final class TradePostSuccessCode {
     public static final ApiResponse.SuccessCode TRADE_REQUEST_CREATED =
             ApiResponse.SuccessCode.of("201 CREATED", "TRADE_REQUEST_CREATED", "구매 요청이 생성되었습니다.");
 
+    public static final ApiResponse.SuccessCode TRADE_POST_COMPLETED =
+            ApiResponse.SuccessCode.of("TRADE_POST_COMPLETED", "거래가 완료 처리되었습니다.");
+
     private TradePostSuccessCode() {
     }
 }

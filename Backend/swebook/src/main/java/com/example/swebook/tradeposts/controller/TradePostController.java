@@ -2,6 +2,7 @@ package com.example.swebook.tradeposts.controller;
 
 import com.example.swebook.global.response.ApiResponse;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.CompleteTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
@@ -60,6 +61,14 @@ public class TradePostController {
         return ApiResponse.success(
                 tradePostService.createTradeRequest(postId, request),
                 TradePostSuccessCode.TRADE_REQUEST_CREATED
+        );
+    }
+
+    @PostMapping("/{postId}/complete")
+    public ApiResponse<CompleteTradePostResponse> completeTradePost(@PathVariable Long postId) {
+        return ApiResponse.success(
+                tradePostService.completeTradePost(postId),
+                TradePostSuccessCode.TRADE_POST_COMPLETED
         );
     }
 }

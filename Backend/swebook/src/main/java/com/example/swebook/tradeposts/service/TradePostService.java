@@ -2,6 +2,7 @@ package com.example.swebook.tradeposts.service;
 
 import com.example.swebook.global.error.BusinessException;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.CompleteTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
@@ -122,5 +123,14 @@ public class TradePostService {
         );
 
         return CreateTradeRequestResponse.from(tradeRequest, request.availableTime());
+    }
+
+    @Transactional
+    public CompleteTradePostResponse completeTradePost(Long postId) {
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        tradePost.complete();
+
+        return CompleteTradePostResponse.from(tradePost);
     }
 }
