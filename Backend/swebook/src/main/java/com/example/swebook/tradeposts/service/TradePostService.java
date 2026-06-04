@@ -1,7 +1,16 @@
 package com.example.swebook.tradeposts.service;
 
+import com.example.swebook.books.entity.Book;
+import com.example.swebook.books.error.BookErrorCode;
+import com.example.swebook.books.repository.BookRepository;
+import com.example.swebook.categories.entity.Category;
+import com.example.swebook.categories.error.CategoryErrorCode;
+import com.example.swebook.categories.repository.CategoryRepository;
 import com.example.swebook.global.error.BusinessException;
+import com.example.swebook.global.error.CommonErrorCode;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.CreateTradePostRequest;
+import com.example.swebook.tradeposts.dto.CreateTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
@@ -35,8 +44,12 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TradePostService {
 
+    private static final int DEFAULT_RADIUS = 300;
+
     private final TradePostRepository tradePostRepository;
     private final UserRepository userRepository;
+    private final BookRepository bookRepository;
+    private final CategoryRepository categoryRepository;
     private final BookImageRepository bookImageRepository;
     private final TradeAvailableTimeRepository tradeAvailableTimeRepository;
     private final TradeRequestRepository tradeRequestRepository;
@@ -45,6 +58,8 @@ public class TradePostService {
     public TradePostService(
             TradePostRepository tradePostRepository,
             UserRepository userRepository,
+            BookRepository bookRepository,
+            CategoryRepository categoryRepository,
             BookImageRepository bookImageRepository,
             TradeAvailableTimeRepository tradeAvailableTimeRepository,
             TradeRequestRepository tradeRequestRepository,
@@ -52,6 +67,8 @@ public class TradePostService {
     ) {
         this.tradePostRepository = tradePostRepository;
         this.userRepository = userRepository;
+        this.bookRepository = bookRepository;
+        this.categoryRepository = categoryRepository;
         this.bookImageRepository = bookImageRepository;
         this.tradeAvailableTimeRepository = tradeAvailableTimeRepository;
         this.tradeRequestRepository = tradeRequestRepository;
@@ -63,6 +80,37 @@ public class TradePostService {
                 .stream()
                 .map(TradePostResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public CreateTradePostResponse createTradePost(CreateTradePostRequest request) {
+        User seller = userRepository.findById(request.sellerId())
+                .orElseThrow(() -> new BusinessException(MeErrorCode.USER_NOT_FOUND));
+        Book book = bookRepository.findById(request.bookId())
+                .orElseThrow(() -> new BusinessException(BookErrorCode.BOOK_NOT_FOUND));
+        Category category = categoryRepository.findById(request.categoryCode())
+                .orElseThrow(() -> new BusinessException(CategoryErrorCode.CATEGORY_NOT_FOUND));
+        TradePost tradePost = tradePostRepository.saveAndFlush(TradePost.create(
+                seller,
+                book,
+                category,
+                request.price(),
+                request.description(),
+                request.placeName(),
+                request.latitude(),
+                request.longitude(),
+                DEFAULT_RADIUS
+        ));
+        List<TradeAvailableTime> availableTimes = request.availableTimes().stream()
+                .map(availableTime -> TradeAvailableTime.create(
+                        tradePost,
+                        availableTime.startAt(),
+                        validateAvailableTimeEndAfterStart(availableTime)
+                ))
+                .toList();
+        List<TradeAvailableTime> savedAvailableTimes = tradeAvailableTimeRepository.saveAllAndFlush(availableTimes);
+
+        return CreateTradePostResponse.from(tradePost, request.detailAddress(), savedAvailableTimes);
     }
 
     public TradePostDetailResponse getTradePost(Long postId) {
@@ -144,5 +192,13 @@ public class TradePostService {
         tradePost.delete(LocalDateTime.now());
 
         return DeleteTradePostResponse.from(tradePost);
+    }
+
+    private LocalDateTime validateAvailableTimeEndAfterStart(CreateTradePostRequest.AvailableTimeRequest availableTime) {
+        if (!availableTime.startAt().isBefore(availableTime.endAt())) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        return availableTime.endAt();
     }
 }

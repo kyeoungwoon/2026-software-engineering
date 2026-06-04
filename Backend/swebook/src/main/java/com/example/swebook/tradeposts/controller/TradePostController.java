@@ -2,6 +2,8 @@ package com.example.swebook.tradeposts.controller;
 
 import com.example.swebook.global.response.ApiResponse;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.CreateTradePostRequest;
+import com.example.swebook.tradeposts.dto.CreateTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
@@ -38,6 +40,17 @@ public class TradePostController {
     @GetMapping
     public List<TradePostResponse> getTradePosts() {
         return tradePostService.getTradePosts();
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<CreateTradePostResponse> createTradePost(
+            @Valid @RequestBody CreateTradePostRequest request
+    ) {
+        return ApiResponse.success(
+                tradePostService.createTradePost(request),
+                TradePostSuccessCode.TRADE_POST_CREATED
+        );
     }
 
     @GetMapping("/{postId}")

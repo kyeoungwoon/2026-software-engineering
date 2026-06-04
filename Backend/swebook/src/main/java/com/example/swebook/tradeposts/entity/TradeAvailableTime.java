@@ -34,6 +34,14 @@ public class TradeAvailableTime {
     protected TradeAvailableTime() {
     }
 
+    public static TradeAvailableTime create(TradePost tradePost, LocalDateTime startAt, LocalDateTime endAt) {
+        TradeAvailableTime tradeAvailableTime = new TradeAvailableTime();
+        tradeAvailableTime.tradePost = tradePost;
+        tradeAvailableTime.startAt = startAt;
+        tradeAvailableTime.endAt = endAt;
+        return tradeAvailableTime;
+    }
+
     public Long getAvailableTimeId() {
         return availableTimeId;
     }
