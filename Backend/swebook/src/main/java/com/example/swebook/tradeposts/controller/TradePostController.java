@@ -1,6 +1,9 @@
 package com.example.swebook.tradeposts.controller;
 
+import com.example.swebook.global.response.ApiResponse;
+import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
+import com.example.swebook.tradeposts.error.TradePostSuccessCode;
 import com.example.swebook.tradeposts.service.TradePostService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,5 +30,13 @@ public class TradePostController {
     @GetMapping("/{postId}")
     public TradePostResponse getTradePost(@PathVariable Long postId) {
         return tradePostService.getTradePost(postId);
+    }
+
+    @GetMapping("/{postId}/available-times")
+    public ApiResponse<AvailableTimeResponse> getAvailableTimes(@PathVariable Long postId) {
+        return ApiResponse.success(
+                tradePostService.getAvailableTimes(postId),
+                TradePostSuccessCode.AVAILABLE_TIMES_FOUND
+        );
     }
 }

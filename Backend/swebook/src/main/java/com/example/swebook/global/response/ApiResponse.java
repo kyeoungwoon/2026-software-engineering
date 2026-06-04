@@ -25,6 +25,16 @@ public record ApiResponse<T>(
         );
     }
 
+    public static <T> ApiResponse<T> success(T data, SuccessCode successCode) {
+        return new ApiResponse<>(
+                true,
+                successCode,
+                null,
+                data,
+                Meta.now()
+        );
+    }
+
     public static ApiResponse<Void> error(ErrorCode errorCode) {
         return new ApiResponse<>(
                 false,
@@ -42,6 +52,10 @@ public record ApiResponse<T>(
     ) {
         public static SuccessCode ok() {
             return new SuccessCode("200 OK", "SUCCESS", "요청이 성공했습니다.");
+        }
+
+        public static SuccessCode of(String code, String message) {
+            return new SuccessCode("200 OK", code, message);
         }
     }
 
