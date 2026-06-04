@@ -7,6 +7,7 @@ import com.example.swebook.tradeposts.dto.CreateTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
+import com.example.swebook.tradeposts.dto.NearbyTradePostsResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
@@ -25,10 +26,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -54,6 +57,21 @@ public class TradePostController {
         return ApiResponse.success(
                 tradePostService.createTradePost(request),
                 TradePostSuccessCode.TRADE_POST_CREATED
+        );
+    }
+
+    @GetMapping("/search")
+    public ApiResponse<NearbyTradePostsResponse> getNearbyTradePosts(
+            @RequestParam BigDecimal latitude,
+            @RequestParam BigDecimal longitude,
+            @RequestParam String categoryCode,
+            @RequestParam(required = false) String bookTitle,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.success(
+                tradePostService.getNearbyTradePosts(latitude, longitude, categoryCode, bookTitle, page, size),
+                TradePostSuccessCode.NEARBY_TRADE_POSTS_FOUND
         );
     }
 

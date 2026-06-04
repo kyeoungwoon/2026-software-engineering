@@ -14,6 +14,7 @@ import com.example.swebook.tradeposts.dto.CreateTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
+import com.example.swebook.tradeposts.dto.NearbyTradePostsResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
@@ -38,13 +39,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.Collection;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +58,7 @@ import java.util.stream.Collectors;
 public class TradePostService {
 
     private static final int DEFAULT_RADIUS = 300;
+    private static final double EARTH_RADIUS_METER = 6_371_000;
     private static final String UPLOAD_DIRECTORY = "uploads";
 
     private final TradePostRepository tradePostRepository;
@@ -88,6 +95,47 @@ public class TradePostService {
                 .stream()
                 .map(TradePostResponse::from)
                 .toList();
+    }
+
+    public NearbyTradePostsResponse getNearbyTradePosts(
+            BigDecimal latitude,
+            BigDecimal longitude,
+            String categoryCode,
+            String bookTitle,
+            int page,
+            int size
+    ) {
+        if (page < 0 || size <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        List<TradePostWithDistance> posts = tradePostRepository.findByDeletedAtIsNullAndCategoryCategoryCode(categoryCode)
+                .stream()
+                .map(tradePost -> TradePostWithDistance.from(
+                        tradePost,
+                        calculateDistanceMeter(latitude, longitude, tradePost.getLatitude(), tradePost.getLongitude())
+                ))
+                .sorted(Comparator.comparingLong(TradePostWithDistance::distanceMeter))
+                .toList();
+        Map<Long, BookImage> coverImages = getCoverImages(posts.stream()
+                .map(TradePostWithDistance::tradePost)
+                .map(TradePost::getPostId)
+                .toList());
+        int fromIndex = Math.min(page * size, posts.size());
+        int toIndex = Math.min(fromIndex + size, posts.size());
+        List<NearbyTradePostsResponse.PostItem> items = posts.subList(fromIndex, toIndex)
+                .stream()
+                .map(post -> NearbyTradePostsResponse.PostItem.from(
+                        post.tradePost(),
+                        post.distanceMeter(),
+                        coverImages.get(post.tradePost().getPostId())
+                ))
+                .toList();
+
+        return NearbyTradePostsResponse.of(
+                items,
+                NearbyTradePostsResponse.PageInfo.of(page, size, posts.size())
+        );
     }
 
     @Transactional
@@ -271,5 +319,45 @@ public class TradePostService {
         }
 
         return fileName.substring(extensionStartIndex);
+    }
+
+    private Map<Long, BookImage> getCoverImages(Collection<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return bookImageRepository.findByTradePostPostIdInAndSortOrder(postIds, 0)
+                .stream()
+                .collect(Collectors.toMap(
+                        image -> image.getTradePost().getPostId(),
+                        Function.identity()
+                ));
+    }
+
+    private long calculateDistanceMeter(
+            BigDecimal userLatitude,
+            BigDecimal userLongitude,
+            BigDecimal postLatitude,
+            BigDecimal postLongitude
+    ) {
+        double userLatitudeRadians = Math.toRadians(userLatitude.doubleValue());
+        double postLatitudeRadians = Math.toRadians(postLatitude.doubleValue());
+        double latitudeDifference = Math.toRadians(postLatitude.subtract(userLatitude).doubleValue());
+        double longitudeDifference = Math.toRadians(postLongitude.subtract(userLongitude).doubleValue());
+        double haversine = Math.sin(latitudeDifference / 2) * Math.sin(latitudeDifference / 2)
+                + Math.cos(userLatitudeRadians) * Math.cos(postLatitudeRadians)
+                * Math.sin(longitudeDifference / 2) * Math.sin(longitudeDifference / 2);
+        double angularDistance = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+
+        return Math.round(EARTH_RADIUS_METER * angularDistance);
+    }
+
+    private record TradePostWithDistance(
+            TradePost tradePost,
+            long distanceMeter
+    ) {
+        public static TradePostWithDistance from(TradePost tradePost, long distanceMeter) {
+            return new TradePostWithDistance(tradePost, distanceMeter);
+        }
     }
 }
