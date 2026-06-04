@@ -94,6 +94,30 @@ docker compose up -d
 http://localhost:8080
 ```
 
+## API 문서
+
+Spring Boot 애플리케이션 실행 후 Swagger UI에서 API 문서를 확인할 수 있습니다.
+
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+OpenAPI JSON:
+
+```text
+http://localhost:8080/v3/api-docs
+```
+
+도메인별 OpenAPI JSON:
+
+```text
+http://localhost:8080/v3/api-docs/books
+http://localhost:8080/v3/api-docs/categories
+http://localhost:8080/v3/api-docs/trade-posts
+http://localhost:8080/v3/api-docs/me
+http://localhost:8080/v3/api-docs/trade-requests
+```
+
 ## 테스트
 
 ```bash
