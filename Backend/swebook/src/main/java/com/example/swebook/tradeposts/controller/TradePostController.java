@@ -2,17 +2,19 @@ package com.example.swebook.tradeposts.controller;
 
 import com.example.swebook.global.response.ApiResponse;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
-import com.example.swebook.tradeposts.dto.CompleteTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
+import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
+import com.example.swebook.tradeposts.dto.UpdateTradePostStatusResponse;
 import com.example.swebook.tradeposts.error.TradePostSuccessCode;
 import com.example.swebook.tradeposts.service.TradePostService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -64,11 +66,14 @@ public class TradePostController {
         );
     }
 
-    @PostMapping("/{postId}/complete")
-    public ApiResponse<CompleteTradePostResponse> completeTradePost(@PathVariable Long postId) {
+    @PatchMapping("/{postId}/status")
+    public ApiResponse<UpdateTradePostStatusResponse> updateTradePostStatus(
+            @PathVariable Long postId,
+            @Valid @RequestBody UpdateTradePostStatusRequest request
+    ) {
         return ApiResponse.success(
-                tradePostService.completeTradePost(postId),
-                TradePostSuccessCode.TRADE_POST_COMPLETED
+                tradePostService.updateTradePostStatus(postId, request),
+                TradePostSuccessCode.TRADE_POST_STATUS_UPDATED
         );
     }
 }

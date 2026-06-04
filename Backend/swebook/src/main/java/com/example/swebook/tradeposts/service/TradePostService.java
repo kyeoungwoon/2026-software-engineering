@@ -2,11 +2,12 @@ package com.example.swebook.tradeposts.service;
 
 import com.example.swebook.global.error.BusinessException;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
-import com.example.swebook.tradeposts.dto.CompleteTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
+import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
+import com.example.swebook.tradeposts.dto.UpdateTradePostStatusResponse;
 import com.example.swebook.me.entity.User;
 import com.example.swebook.me.error.MeErrorCode;
 import com.example.swebook.me.repository.UserRepository;
@@ -126,11 +127,11 @@ public class TradePostService {
     }
 
     @Transactional
-    public CompleteTradePostResponse completeTradePost(Long postId) {
+    public UpdateTradePostStatusResponse updateTradePostStatus(Long postId, UpdateTradePostStatusRequest request) {
         TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
                 .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
-        tradePost.complete();
+        tradePost.updateStatus(request.status());
 
-        return CompleteTradePostResponse.from(tradePost);
+        return UpdateTradePostStatusResponse.from(tradePost);
     }
 }

@@ -73,8 +73,8 @@ public class TradePost {
     protected TradePost() {
     }
 
-    public void complete() {
-        this.status = TradePostStatus.SOLD;
+    public void updateStatus(TradePostStatus status) {
+        this.status = status;
     }
 
     public Long getPostId() {
