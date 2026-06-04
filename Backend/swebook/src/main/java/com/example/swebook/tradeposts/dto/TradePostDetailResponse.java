@@ -21,7 +21,6 @@ public record TradePostDetailResponse(
         String description,
         TradePostStatus status,
         String placeName,
-        String detailAddress,
         BigDecimal latitude,
         BigDecimal longitude,
         List<ImageInfo> images,
@@ -43,7 +42,6 @@ public record TradePostDetailResponse(
                 tradePost.getDescription(),
                 tradePost.getStatus(),
                 tradePost.getPlaceName(),
-                null,
                 tradePost.getLatitude(),
                 tradePost.getLongitude(),
                 images.stream()
