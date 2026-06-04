@@ -10,6 +10,9 @@ public final class TradePostSuccessCode {
     public static final ApiResponse.SuccessCode TRADE_POST_CREATED =
             ApiResponse.SuccessCode.of("201 CREATED", "TRADE_POST_CREATED", "판매글이 등록되었습니다.");
 
+    public static final ApiResponse.SuccessCode TRADE_POST_IMAGES_UPLOADED =
+            ApiResponse.SuccessCode.of("201 CREATED", "TRADE_POST_IMAGES_UPLOADED", "판매글 이미지가 업로드되었습니다.");
+
     public static final ApiResponse.SuccessCode AVAILABLE_TIMES_FOUND =
             ApiResponse.SuccessCode.of("AVAILABLE_TIMES_FOUND", "거래 가능 시간 조회에 성공했습니다.");
 

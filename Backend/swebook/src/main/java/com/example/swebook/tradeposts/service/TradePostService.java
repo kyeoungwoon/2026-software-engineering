@@ -18,6 +18,7 @@ import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
 import com.example.swebook.tradeposts.dto.UpdateTradePostStatusResponse;
+import com.example.swebook.tradeposts.dto.UploadTradePostImagesResponse;
 import com.example.swebook.me.entity.User;
 import com.example.swebook.me.error.MeErrorCode;
 import com.example.swebook.me.repository.UserRepository;
@@ -34,10 +35,16 @@ import com.example.swebook.traderequests.error.TradeRequestErrorCode;
 import com.example.swebook.traderequests.repository.TradeRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,6 +52,7 @@ import java.util.stream.Collectors;
 public class TradePostService {
 
     private static final int DEFAULT_RADIUS = 300;
+    private static final String UPLOAD_DIRECTORY = "uploads";
 
     private final TradePostRepository tradePostRepository;
     private final UserRepository userRepository;
@@ -111,6 +119,28 @@ public class TradePostService {
         List<TradeAvailableTime> savedAvailableTimes = tradeAvailableTimeRepository.saveAllAndFlush(availableTimes);
 
         return CreateTradePostResponse.from(tradePost, request.detailAddress(), savedAvailableTimes);
+    }
+
+    @Transactional
+    public UploadTradePostImagesResponse uploadTradePostImages(Long postId, List<MultipartFile> images) {
+        if (images == null || images.isEmpty() || images.stream().anyMatch(MultipartFile::isEmpty)) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        AtomicInteger nextSortOrder = new AtomicInteger(Math.toIntExact(bookImageRepository.countByTradePostPostId(postId)));
+        Path postUploadDirectory = Path.of(UPLOAD_DIRECTORY, "trade-posts", String.valueOf(postId))
+                .toAbsolutePath()
+                .normalize();
+        createDirectories(postUploadDirectory);
+
+        List<BookImage> bookImages = images.stream()
+                .map(image -> saveBookImage(tradePost, image, postUploadDirectory, nextSortOrder.getAndIncrement()))
+                .toList();
+        List<BookImage> savedImages = bookImageRepository.saveAllAndFlush(bookImages);
+
+        return UploadTradePostImagesResponse.of(postId, savedImages);
     }
 
     public TradePostDetailResponse getTradePost(Long postId) {
@@ -200,5 +230,46 @@ public class TradePostService {
         }
 
         return availableTime.endAt();
+    }
+
+    private BookImage saveBookImage(
+            TradePost tradePost,
+            MultipartFile image,
+            Path postUploadDirectory,
+            int sortOrder
+    ) {
+        String fileName = UUID.randomUUID() + getFileExtension(image.getOriginalFilename());
+        Path filePath = postUploadDirectory.resolve(fileName).normalize();
+
+        try {
+            image.transferTo(filePath);
+        } catch (IOException e) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        String imageUrl = "/uploads/trade-posts/" + tradePost.getPostId() + "/" + fileName;
+        return BookImage.create(tradePost, imageUrl, sortOrder);
+    }
+
+    private void createDirectories(Path directory) {
+        try {
+            Files.createDirectories(directory);
+        } catch (IOException e) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private String getFileExtension(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "";
+        }
+
+        String fileName = Path.of(originalFilename).getFileName().toString();
+        int extensionStartIndex = fileName.lastIndexOf('.');
+        if (extensionStartIndex < 0) {
+            return "";
+        }
+
+        return fileName.substring(extensionStartIndex);
     }
 }

@@ -37,6 +37,15 @@ public class BookImage {
     protected BookImage() {
     }
 
+    public static BookImage create(TradePost tradePost, String imageUrl, Integer sortOrder) {
+        BookImage bookImage = new BookImage();
+        bookImage.tradePost = tradePost;
+        bookImage.imageUrl = imageUrl;
+        bookImage.sortOrder = sortOrder;
+        bookImage.createdAt = LocalDateTime.now();
+        return bookImage;
+    }
+
     public Long getImageId() {
         return imageId;
     }

@@ -8,4 +8,6 @@ import java.util.List;
 public interface BookImageRepository extends JpaRepository<BookImage, Long> {
 
     List<BookImage> findByTradePostPostIdOrderBySortOrderAsc(Long postId);
+
+    long countByTradePostPostId(Long postId);
 }
