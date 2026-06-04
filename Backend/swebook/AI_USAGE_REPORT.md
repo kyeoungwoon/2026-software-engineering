@@ -654,3 +654,181 @@ c18a765 feat: trade-requests 도메인 구조 확립 및 조회 api 생성
 - `fnm_multishells` 관련 권한 경고는 shell 초기화 과정에서 발생한 로컬 환경 문제이며, 애플리케이션 빌드나 API 동작과 직접 관련이 없었다.
 - API 설계 CSV 파일과 `.DS_Store` 파일은 도메인 커밋에 포함하지 않았다.
 - Docker MySQL init script는 데이터 볼륨이 비어 있는 최초 실행 시점에만 동작한다. 시딩을 다시 적용하려면 `docker compose down -v` 후 `docker compose up -d`를 실행해야 한다.
+
+## 추가 AI 활용 기록: trade-posts 핵심 API 구현
+
+작성 시각: 2026-06-04 21:00 KST
+
+이후 작업에서는 `trade-posts` 도메인의 핵심 사용자 플로우를 구현하는 데 AI를 활용했다. 구현 범위는 판매글 등록, 이미지 업로드, 상태 변경, 삭제, 구매 요청 생성, 거래 가능 시간 조회, 상세 조회, 위치 기반 검색 API였다.
+
+AI는 단순히 코드를 생성하는 역할뿐 아니라 API 설계 판단에도 활용되었다. 예를 들어 판매글 상태 변경 API를 처음에는 `POST /api/trade-posts/{postId}/complete`로 구현했으나, 여러 상태를 변경할 수 있어야 한다는 요구가 추가되자 `PATCH /api/trade-posts/{postId}/status`와 request body 기반 구조가 더 적절하다고 판단했다. 또한 판매글 조회 API는 여러 검색 조건이 있더라도 서버 상태를 변경하지 않는 조회이므로 `POST`보다 `GET /api/trade-posts/search`가 적절하다고 정리했다.
+
+### 5. 판매글 상태 변경 API 설계 및 구현
+
+핵심 프롬프트:
+
+```text
+PATCH /api/trade-posts/{postId}/status
+  {
+    "status": "RESERVED"
+  } 이렇게 바꿔줘 여러상태로 변경하게 하는게 좋을것같아
+```
+
+AI 활용 내용:
+
+기존 `complete` 전용 API를 일반 상태 변경 API로 바꾸었다. 상태값은 path variable이 아니라 request body로 받도록 설계했고, `AVAILABLE`, `RESERVED`, `SOLD` enum 기반으로 처리했다. 잘못된 enum 값이 들어오면 서버 오류가 아니라 클라이언트 요청 오류로 처리해야 하므로 `HttpMessageNotReadableException`을 공통 400 에러로 매핑했다.
+
+주요 결과:
+
+```text
+PATCH /api/trade-posts/{postId}/status
+successCode.code = TRADE_POST_STATUS_UPDATED
+invalid status -> 400 COMMON_400_001
+```
+
+### 6. 판매글 등록과 이미지 업로드 API 분리
+
+핵심 프롬프트:
+
+```text
+근데 게시글을 생성하는 api 와 생성된 게시글에 대하여 image 를 업로드하는 api를 분리할 생각이야. POST /api/trade-posts/{postId}/images 이미지 업로드 api의 앤드포인트 , POST /api/trade-posts 게시글 등록 api 의 엔드포인트야. 즉 다시 문서화해야겠지 ? 방금 전의 명령에 대하여
+```
+
+AI 활용 내용:
+
+판매글 등록 API와 이미지 업로드 API를 분리하는 설계를 정리했다. 판매글 등록은 JSON 요청으로 처리하고, 이미지 업로드는 `multipart/form-data`로 처리하도록 나누었다. 이를 통해 프론트엔드는 먼저 `POST /api/trade-posts`로 `postId`를 받은 뒤, 해당 `postId`를 사용해 `POST /api/trade-posts/{postId}/images`를 호출하는 흐름을 갖게 되었다.
+
+주요 결과:
+
+```text
+POST /api/trade-posts
+Content-Type: application/json
+
+POST /api/trade-posts/{postId}/images
+Content-Type: multipart/form-data
+```
+
+### 7. 로컬 이미지 저장 방식 구현
+
+핵심 프롬프트:
+
+```text
+이제 POST /api/trade-posts/{postId}/images 방금 만든 게시글에 해당하는 이미지를 업로드하는 api를 구현할거야.   POST /api/trade-posts/{postId}/images
+  Content-Type: multipart/form-data 이런식으로 post되는 데이터가 json이 아닐것이야 맞지? 너가 만든 플랜대로 구현해줘
+```
+
+AI 활용 내용:
+
+AWS S3 presigned URL을 사용하지 않고 로컬 개발 환경에서 동작하도록 이미지 업로드 로직을 구현했다. 업로드된 파일은 프로젝트 루트의 `uploads/trade-posts/{postId}/` 디렉터리에 UUID 기반 파일명으로 저장했다. DB에는 실제 절대경로가 아니라 클라이언트가 접근 가능한 `/uploads/...` URL path를 저장했다. 또한 `WebMvcConfigurer`로 `/uploads/**` 정적 리소스 매핑을 추가했다.
+
+주요 결과:
+
+```text
+파일 저장 위치:
+uploads/trade-posts/{postId}/{uuid}.{ext}
+
+DB 저장 값:
+/uploads/trade-posts/{postId}/{uuid}.{ext}
+
+대표 이미지:
+sort_order = 0
+```
+
+검증 결과:
+
+```text
+POST /api/trade-posts/{postId}/images -> 201
+book_images DB 저장 확인
+/uploads/... 직접 접근 -> 200
+GET /api/trade-posts/{postId} 상세 조회에 이미지 반영 확인
+```
+
+### 8. 위치 기반 판매글 검색 API 구현
+
+핵심 프롬프트:
+
+```text
+좋아 그럼 너가 말한대로 get api로 구현하자 쿼리 파라미터로 다 받아버리고, majorcode와 coursecode를 나눌필요 없이 , categorycode값 하나만 받는걸로 해주고, 각 게시글마다 존재하는 경도와 , 위도 그리고 현재 입력받은 사용자의 경도와 위도의 거리를 계산하여 가장 짧은 거리의 게시글 부터 오름차순으로 정렬해서 반환해주는 걸로 하자
+```
+
+AI 활용 내용:
+
+판매글 검색은 서버 상태를 변경하지 않는 조회 기능이므로 `GET /api/trade-posts/search`로 설계했다. `latitude`, `longitude`, `categoryCode`, `bookTitle`, `page`, `size`를 query parameter로 받도록 구현했다. `bookTitle`은 현재 입력만 받고 필터에는 적용하지 않았다. 거리 계산은 Haversine 공식을 사용해 미터 단위 `distanceMeter`를 산출했고, 해당 값을 기준으로 오름차순 정렬했다.
+
+주요 결과:
+
+```text
+GET /api/trade-posts/search
+successCode.code = NEARBY_TRADE_POSTS_FOUND
+distanceMeter 오름차순 정렬
+page, size, totalElements, totalPages, hasNext 반환
+```
+
+중앙대 310관 좌표 테스트:
+
+```text
+요청 좌표:
+latitude=37.5043000
+longitude=126.9563000
+
+응답 정렬:
+postId=11 distanceMeter=71
+postId=1  distanceMeter=7048
+postId=26 distanceMeter=10745
+```
+
+### 9. PR 생성 및 협업 흐름 정리
+
+핵심 프롬프트:
+
+```text
+오케이 지금 현재 브렌치에서 진행한것들에 대하여 pr 생성 ㄱㄱ
+```
+
+AI 활용 내용:
+
+현재 브랜치의 커밋 상태와 원격 브랜치 상태를 확인한 뒤 PR을 생성했다. PR 본문은 이전에 정한 형식에 맞춰 이슈 번호, 주요 변경사항, 테스트 결과, 참고 및 개선사항으로 구성했다.
+
+생성된 PR:
+
+```text
+https://github.com/kyeoungwoon/2026-software-engineering/pull/6
+```
+
+PR 주요 포함 API:
+
+```text
+POST   /api/trade-posts
+POST   /api/trade-posts/{postId}/images
+PATCH  /api/trade-posts/{postId}/status
+DELETE /api/trade-posts/{postId}
+GET    /api/trade-posts/search
+```
+
+## 추가 검증 명령
+
+이번 trade-posts API 구현 과정에서 사용한 주요 검증 명령은 다음과 같다.
+
+```bash
+./gradlew test
+
+curl -s -i -X POST http://127.0.0.1:18090/api/trade-posts \
+  -H 'Content-Type: application/json' \
+  -d '{...}'
+
+curl -s -i -X POST http://127.0.0.1:18091/api/trade-posts/26/images \
+  -F 'images=@/private/tmp/swebook-image-1.jpg' \
+  -F 'images=@/private/tmp/swebook-image-2.png'
+
+curl -s -i http://127.0.0.1:18091/uploads/trade-posts/26/{image-file-name}.jpg
+
+curl -s -i -X PATCH http://127.0.0.1:18088/api/trade-posts/5/status \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"RESERVED"}'
+
+curl -s -i -X DELETE http://127.0.0.1:18089/api/trade-posts/6
+
+curl -s -i 'http://127.0.0.1:18092/api/trade-posts/search?latitude=37.5043000&longitude=126.9563000&categoryCode=100101&bookTitle=%EC%9A%B4%EC%98%81%EC%B2%B4%EC%A0%9C&page=0&size=10'
+
+docker compose exec -T mysql mysql -uswebook_user -pswebook_password swebook -e "SELECT ..."
+```
