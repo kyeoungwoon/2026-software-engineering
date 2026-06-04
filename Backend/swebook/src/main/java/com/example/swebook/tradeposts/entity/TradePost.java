@@ -73,6 +73,41 @@ public class TradePost {
     protected TradePost() {
     }
 
+    public static TradePost create(
+            User seller,
+            Book book,
+            Category category,
+            Integer price,
+            String description,
+            String placeName,
+            BigDecimal latitude,
+            BigDecimal longitude,
+            Integer radius
+    ) {
+        TradePost tradePost = new TradePost();
+        tradePost.seller = seller;
+        tradePost.book = book;
+        tradePost.category = category;
+        tradePost.price = price;
+        tradePost.description = description;
+        tradePost.status = TradePostStatus.AVAILABLE;
+        tradePost.placeName = placeName;
+        tradePost.latitude = latitude;
+        tradePost.longitude = longitude;
+        tradePost.radius = radius;
+        tradePost.createdAt = LocalDateTime.now();
+        tradePost.updatedAt = tradePost.createdAt;
+        return tradePost;
+    }
+
+    public void updateStatus(TradePostStatus status) {
+        this.status = status;
+    }
+
+    public void delete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
     public Long getPostId() {
         return postId;
     }

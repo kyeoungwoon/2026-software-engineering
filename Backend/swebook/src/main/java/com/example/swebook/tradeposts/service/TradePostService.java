@@ -1,11 +1,25 @@
 package com.example.swebook.tradeposts.service;
 
+import com.example.swebook.books.entity.Book;
+import com.example.swebook.books.error.BookErrorCode;
+import com.example.swebook.books.repository.BookRepository;
+import com.example.swebook.categories.entity.Category;
+import com.example.swebook.categories.error.CategoryErrorCode;
+import com.example.swebook.categories.repository.CategoryRepository;
 import com.example.swebook.global.error.BusinessException;
+import com.example.swebook.global.error.CommonErrorCode;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.CreateTradePostRequest;
+import com.example.swebook.tradeposts.dto.CreateTradePostResponse;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestRequest;
 import com.example.swebook.tradeposts.dto.CreateTradeRequestResponse;
+import com.example.swebook.tradeposts.dto.DeleteTradePostResponse;
+import com.example.swebook.tradeposts.dto.NearbyTradePostsResponse;
 import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
+import com.example.swebook.tradeposts.dto.UpdateTradePostStatusRequest;
+import com.example.swebook.tradeposts.dto.UpdateTradePostStatusResponse;
+import com.example.swebook.tradeposts.dto.UploadTradePostImagesResponse;
 import com.example.swebook.me.entity.User;
 import com.example.swebook.me.error.MeErrorCode;
 import com.example.swebook.me.repository.UserRepository;
@@ -22,17 +36,35 @@ import com.example.swebook.traderequests.error.TradeRequestErrorCode;
 import com.example.swebook.traderequests.repository.TradeRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.Collection;
+import java.util.Map;
 import java.util.List;
+import java.util.UUID;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
 public class TradePostService {
 
+    private static final int DEFAULT_RADIUS = 300;
+    private static final double EARTH_RADIUS_METER = 6_371_000;
+    private static final String UPLOAD_DIRECTORY = "uploads";
+
     private final TradePostRepository tradePostRepository;
     private final UserRepository userRepository;
+    private final BookRepository bookRepository;
+    private final CategoryRepository categoryRepository;
     private final BookImageRepository bookImageRepository;
     private final TradeAvailableTimeRepository tradeAvailableTimeRepository;
     private final TradeRequestRepository tradeRequestRepository;
@@ -41,6 +73,8 @@ public class TradePostService {
     public TradePostService(
             TradePostRepository tradePostRepository,
             UserRepository userRepository,
+            BookRepository bookRepository,
+            CategoryRepository categoryRepository,
             BookImageRepository bookImageRepository,
             TradeAvailableTimeRepository tradeAvailableTimeRepository,
             TradeRequestRepository tradeRequestRepository,
@@ -48,6 +82,8 @@ public class TradePostService {
     ) {
         this.tradePostRepository = tradePostRepository;
         this.userRepository = userRepository;
+        this.bookRepository = bookRepository;
+        this.categoryRepository = categoryRepository;
         this.bookImageRepository = bookImageRepository;
         this.tradeAvailableTimeRepository = tradeAvailableTimeRepository;
         this.tradeRequestRepository = tradeRequestRepository;
@@ -59,6 +95,103 @@ public class TradePostService {
                 .stream()
                 .map(TradePostResponse::from)
                 .toList();
+    }
+
+    public NearbyTradePostsResponse getNearbyTradePosts(
+            BigDecimal latitude,
+            BigDecimal longitude,
+            String categoryCode,
+            String bookTitle,
+            int page,
+            int size
+    ) {
+        if (page < 0 || size <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        List<TradePostWithDistance> posts = tradePostRepository.findByDeletedAtIsNullAndCategoryCategoryCode(categoryCode)
+                .stream()
+                .map(tradePost -> TradePostWithDistance.from(
+                        tradePost,
+                        calculateDistanceMeter(latitude, longitude, tradePost.getLatitude(), tradePost.getLongitude())
+                ))
+                .sorted(Comparator.comparingLong(TradePostWithDistance::distanceMeter))
+                .toList();
+        Map<Long, BookImage> coverImages = getCoverImages(posts.stream()
+                .map(TradePostWithDistance::tradePost)
+                .map(TradePost::getPostId)
+                .toList());
+        int fromIndex = Math.min(page * size, posts.size());
+        int toIndex = Math.min(fromIndex + size, posts.size());
+        List<NearbyTradePostsResponse.PostItem> items = posts.subList(fromIndex, toIndex)
+                .stream()
+                .map(post -> NearbyTradePostsResponse.PostItem.from(
+                        post.tradePost(),
+                        post.distanceMeter(),
+                        coverImages.get(post.tradePost().getPostId())
+                ))
+                .toList();
+
+        return NearbyTradePostsResponse.of(
+                items,
+                NearbyTradePostsResponse.PageInfo.of(page, size, posts.size())
+        );
+    }
+
+    @Transactional
+    public CreateTradePostResponse createTradePost(CreateTradePostRequest request) {
+        User seller = userRepository.findById(request.sellerId())
+                .orElseThrow(() -> new BusinessException(MeErrorCode.USER_NOT_FOUND));
+        Book book = bookRepository.findById(request.bookId())
+                .orElseThrow(() -> new BusinessException(BookErrorCode.BOOK_NOT_FOUND));
+        Category category = categoryRepository.findById(request.categoryCode())
+                .orElseThrow(() -> new BusinessException(CategoryErrorCode.CATEGORY_NOT_FOUND));
+        TradePost tradePost = tradePostRepository.saveAndFlush(TradePost.create(
+                seller,
+                book,
+                category,
+                request.price(),
+                request.description(),
+                request.placeName(),
+                request.latitude(),
+                request.longitude(),
+                DEFAULT_RADIUS
+        ));
+        List<TradeAvailableTime> availableTimes = request.availableTimes().stream()
+                .map(availableTime -> TradeAvailableTime.create(
+                        tradePost,
+                        availableTime.startAt(),
+                        validateAvailableTimeEndAfterStart(availableTime)
+                ))
+                .toList();
+        List<TradeAvailableTime> savedAvailableTimes = tradeAvailableTimeRepository.saveAllAndFlush(availableTimes);
+
+        return CreateTradePostResponse.from(tradePost, request.detailAddress(), savedAvailableTimes);
+    }
+
+    @Transactional
+    public UploadTradePostImagesResponse uploadTradePostImages(Long postId, List<MultipartFile> images) {
+        if (images == null || images.isEmpty()
+                || images.stream().anyMatch(image -> image.isEmpty()
+                || image.getContentType() == null
+                || !image.getContentType().startsWith("image/"))) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        AtomicInteger nextSortOrder = new AtomicInteger(Math.toIntExact(bookImageRepository.countByTradePostPostId(postId)));
+        Path postUploadDirectory = Path.of(UPLOAD_DIRECTORY, "trade-posts", String.valueOf(postId))
+                .toAbsolutePath()
+                .normalize();
+        createDirectories(postUploadDirectory);
+
+        List<BookImage> bookImages = images.stream()
+                .map(image -> saveBookImage(tradePost, image, postUploadDirectory, nextSortOrder.getAndIncrement()))
+                .toList();
+        List<BookImage> savedImages = bookImageRepository.saveAllAndFlush(bookImages);
+
+        return UploadTradePostImagesResponse.of(postId, savedImages);
     }
 
     public TradePostDetailResponse getTradePost(Long postId) {
@@ -122,5 +255,112 @@ public class TradePostService {
         );
 
         return CreateTradeRequestResponse.from(tradeRequest, request.availableTime());
+    }
+
+    @Transactional
+    public UpdateTradePostStatusResponse updateTradePostStatus(Long postId, UpdateTradePostStatusRequest request) {
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        tradePost.updateStatus(request.status());
+
+        return UpdateTradePostStatusResponse.from(tradePost);
+    }
+
+    @Transactional
+    public DeleteTradePostResponse deleteTradePost(Long postId) {
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        tradePost.delete(LocalDateTime.now());
+
+        return DeleteTradePostResponse.from(tradePost);
+    }
+
+    private LocalDateTime validateAvailableTimeEndAfterStart(CreateTradePostRequest.AvailableTimeRequest availableTime) {
+        if (!availableTime.startAt().isBefore(availableTime.endAt())) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        return availableTime.endAt();
+    }
+
+    private BookImage saveBookImage(
+            TradePost tradePost,
+            MultipartFile image,
+            Path postUploadDirectory,
+            int sortOrder
+    ) {
+        String fileName = UUID.randomUUID() + getFileExtension(image.getOriginalFilename());
+        Path filePath = postUploadDirectory.resolve(fileName).normalize();
+
+        try {
+            image.transferTo(filePath);
+        } catch (IOException e) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        String imageUrl = "/uploads/trade-posts/" + tradePost.getPostId() + "/" + fileName;
+        return BookImage.create(tradePost, imageUrl, sortOrder);
+    }
+
+    private void createDirectories(Path directory) {
+        try {
+            Files.createDirectories(directory);
+        } catch (IOException e) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private String getFileExtension(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "";
+        }
+
+        String fileName = Path.of(originalFilename).getFileName().toString();
+        int extensionStartIndex = fileName.lastIndexOf('.');
+        if (extensionStartIndex < 0) {
+            return "";
+        }
+
+        return fileName.substring(extensionStartIndex);
+    }
+
+    private Map<Long, BookImage> getCoverImages(Collection<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return bookImageRepository.findByTradePostPostIdInAndSortOrder(postIds, 0)
+                .stream()
+                .collect(Collectors.toMap(
+                        image -> image.getTradePost().getPostId(),
+                        Function.identity()
+                ));
+    }
+
+    private long calculateDistanceMeter(
+            BigDecimal userLatitude,
+            BigDecimal userLongitude,
+            BigDecimal postLatitude,
+            BigDecimal postLongitude
+    ) {
+        double userLatitudeRadians = Math.toRadians(userLatitude.doubleValue());
+        double postLatitudeRadians = Math.toRadians(postLatitude.doubleValue());
+        double latitudeDifference = Math.toRadians(postLatitude.subtract(userLatitude).doubleValue());
+        double longitudeDifference = Math.toRadians(postLongitude.subtract(userLongitude).doubleValue());
+        double haversine = Math.sin(latitudeDifference / 2) * Math.sin(latitudeDifference / 2)
+                + Math.cos(userLatitudeRadians) * Math.cos(postLatitudeRadians)
+                * Math.sin(longitudeDifference / 2) * Math.sin(longitudeDifference / 2);
+        double angularDistance = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+
+        return Math.round(EARTH_RADIUS_METER * angularDistance);
+    }
+
+    private record TradePostWithDistance(
+            TradePost tradePost,
+            long distanceMeter
+    ) {
+        public static TradePostWithDistance from(TradePost tradePost, long distanceMeter) {
+            return new TradePostWithDistance(tradePost, distanceMeter);
+        }
     }
 }
