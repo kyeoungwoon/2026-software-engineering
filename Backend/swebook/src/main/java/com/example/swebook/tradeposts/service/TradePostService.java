@@ -1,10 +1,14 @@
 package com.example.swebook.tradeposts.service;
 
-import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
-import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.global.error.BusinessException;
+import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
+import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.error.TradePostErrorCode;
+import com.example.swebook.tradeposts.entity.BookImage;
 import com.example.swebook.tradeposts.entity.TradeAvailableTime;
+import com.example.swebook.tradeposts.entity.TradePost;
+import com.example.swebook.tradeposts.repository.BookImageRepository;
 import com.example.swebook.tradeposts.repository.TradeAvailableTimeRepository;
 import com.example.swebook.tradeposts.repository.TradePostRepository;
 import com.example.swebook.tradeposts.repository.TradePostRequestLookupRepository;
@@ -21,15 +25,18 @@ import java.util.stream.Collectors;
 public class TradePostService {
 
     private final TradePostRepository tradePostRepository;
+    private final BookImageRepository bookImageRepository;
     private final TradeAvailableTimeRepository tradeAvailableTimeRepository;
     private final TradePostRequestLookupRepository tradePostRequestLookupRepository;
 
     public TradePostService(
             TradePostRepository tradePostRepository,
+            BookImageRepository bookImageRepository,
             TradeAvailableTimeRepository tradeAvailableTimeRepository,
             TradePostRequestLookupRepository tradePostRequestLookupRepository
     ) {
         this.tradePostRepository = tradePostRepository;
+        this.bookImageRepository = bookImageRepository;
         this.tradeAvailableTimeRepository = tradeAvailableTimeRepository;
         this.tradePostRequestLookupRepository = tradePostRequestLookupRepository;
     }
@@ -41,10 +48,13 @@ public class TradePostService {
                 .toList();
     }
 
-    public TradePostResponse getTradePost(Long postId) {
-        return tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
-                .map(TradePostResponse::from)
+    public TradePostDetailResponse getTradePost(Long postId) {
+        TradePost tradePost = tradePostRepository.findByPostIdAndDeletedAtIsNull(postId)
                 .orElseThrow(() -> new BusinessException(TradePostErrorCode.TRADE_POST_NOT_FOUND));
+        List<BookImage> images = bookImageRepository.findByTradePostPostIdOrderBySortOrderAsc(postId);
+        List<TradeAvailableTime> availableTimes = tradeAvailableTimeRepository.findByTradePostPostIdOrderByStartAtAsc(postId);
+
+        return TradePostDetailResponse.from(tradePost, images, availableTimes);
     }
 
     public AvailableTimeResponse getAvailableTimes(Long postId) {

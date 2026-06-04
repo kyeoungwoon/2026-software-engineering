@@ -2,6 +2,7 @@ package com.example.swebook.tradeposts.controller;
 
 import com.example.swebook.global.response.ApiResponse;
 import com.example.swebook.tradeposts.dto.AvailableTimeResponse;
+import com.example.swebook.tradeposts.dto.TradePostDetailResponse;
 import com.example.swebook.tradeposts.dto.TradePostResponse;
 import com.example.swebook.tradeposts.error.TradePostSuccessCode;
 import com.example.swebook.tradeposts.service.TradePostService;
@@ -28,8 +29,11 @@ public class TradePostController {
     }
 
     @GetMapping("/{postId}")
-    public TradePostResponse getTradePost(@PathVariable Long postId) {
-        return tradePostService.getTradePost(postId);
+    public ApiResponse<TradePostDetailResponse> getTradePost(@PathVariable Long postId) {
+        return ApiResponse.success(
+                tradePostService.getTradePost(postId),
+                TradePostSuccessCode.TRADE_POST_FOUND
+        );
     }
 
     @GetMapping("/{postId}/available-times")
