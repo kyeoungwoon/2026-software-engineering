@@ -830,3 +830,106 @@ latitude, longitude, categoryCode, bookTitle, page, size는 Query Parameters로 
 PR 생성 완료
 https://github.com/kyeoungwoon/2026-software-engineering/pull/6
 ```
+## categories, books, trade-requests, me 도메인 API 구현 프롬프트
+
+### 1. 프로젝트 구조 파악 요청
+
+```text
+clone해서 작업은 할수있나 ?
+find 명령어로 java 파일 전체 구조 확인해줘
+```
+
+### 2. 공통 응답 클래스 확인 요청
+
+```text
+ApiResponse.java 공통 응답 클래스 코드 확인해줘
+TradePostController.java 팀원 코드 패턴 파악하게 보여줘
+```
+
+### 3. categories 도메인 API 구현 요청
+
+```text
+categories 도메인 API 구현할거야.
+CategorySuccessCode, CategoryService, CategoryController를
+팀원 코드 패턴에 맞게 ApiResponse 래핑과 Swagger 어노테이션 포함해서 구현해줘.
+getCourses에 majorCode 존재 여부 검증 로직도 추가해줘.
+```
+
+주요 출력:
+
+```text
+GET /api/categories/majors
+GET /api/categories/{majorCode}/courses
+CategorySuccessCode 생성
+BusinessException으로 CATEGORY_NOT_FOUND 에러 처리
+```
+
+### 4. books 도메인 API 구현 요청
+
+```text
+books 도메인 API 구현할거야.
+BookRequest DTO, BookSuccessCode 생성하고
+Book 엔티티에 정적 팩토리 메서드 추가해줘.
+BookService에 도서 등록(createBook) 메서드 추가하고
+BookController에 ApiResponse 래핑과 Swagger 어노테이션 추가해줘.
+```
+
+주요 출력:
+
+```text
+POST /api/books
+GET /api/books/search
+Book.create() 정적 팩토리 메서드 추가
+BookSuccessCode 생성
+```
+
+### 5. trade-requests 도메인 API 구현 요청
+
+```text
+trade-requests 도메인 accept/reject API 구현할거야.
+수락 시 해당 요청 ACCEPTED, 게시글 RESERVED, 다른 PENDING 요청 자동 REJECTED 처리 필요해.
+TradeRequestSuccessCode 생성, TradeRequest 엔티티에 accept/reject 메서드 추가,
+TradeRequestRepository에 findByTradePostPostIdAndStatus 추가,
+TradeRequestService랑 TradeRequestController 구현해줘.
+```
+
+주요 출력:
+
+```text
+PATCH /api/trade-requests/{requestId}/accept
+PATCH /api/trade-requests/{requestId}/reject
+수락 시 동일 게시글 PENDING 요청 일괄 REJECTED 처리
+TRADE_REQUEST_ALREADY_PROCESSED, TRADE_POST_NOT_AVAILABLE 에러 처리
+```
+
+### 6. me 도메인 API 구현 요청
+
+```text
+me 도메인 API 구현할거야.
+MeSuccessCode 생성하고
+MeController에 ApiResponse 래핑이랑 Swagger 어노테이션 추가해줘.
+```
+
+주요 출력:
+
+```text
+GET /api/me/trade-requests/{userId}
+GET /api/me/sales/requests/{userId}
+MeSuccessCode 생성
+```
+
+### 7. Docker 포트 충돌 트러블슈팅
+
+```text
+docker compose up -d 실행했는데 포트 충돌 에러 발생했어.
+로컬 MySQL이랑 Docker MySQL 간 3306 포트 충돌 문제 해결해줘.
+```
+
+주요 출력:
+
+```text
+docker-compose.yml 포트를 127.0.0.1:3307:3306으로 임시 변경
+application.properties URL을 localhost:3307로 변경
+Swagger UI에서 전 도메인 API 동작 확인 완료
+push 전 3306으로 원상복구
+```

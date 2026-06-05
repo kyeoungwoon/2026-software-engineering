@@ -832,3 +832,54 @@ curl -s -i 'http://127.0.0.1:18092/api/trade-posts/search?latitude=37.5043000&lo
 
 docker compose exec -T mysql mysql -uswebook_user -pswebook_password swebook -e "SELECT ..."
 ```
+## 추가 AI 활용 기록: categories, books, trade-requests, me 도메인 API 구현
+
+작성 시각: 2026-06-05 KST
+
+이후 작업에서는 categories, books, trade-requests, me 도메인의 API를 구현하는 데 AI를 활용했다.
+
+AI는 팀원이 구축한 코드 패턴(ApiResponse 래핑, SuccessCode, 정적 팩토리 메서드, Swagger 어노테이션)을 분석하고, 동일한 패턴으로 나머지 도메인 API를 완성했다.
+
+### 주요 구현 내용
+
+**categories 도메인**
+- CategorySuccessCode 생성
+- CategoryService 구현 (전공 목록 조회, 과목 목록 조회 + majorCode 유효성 검증)
+- CategoryController 구현 (ApiResponse 래핑, Swagger 어노테이션)
+
+**books 도메인**
+- BookRequest DTO 생성
+- BookSuccessCode 생성
+- Book 엔티티에 정적 팩토리 메서드 추가
+- BookService 구현 (도서 검색, 도서 등록)
+- BookController 구현 (ApiResponse 래핑, Swagger 어노테이션)
+
+**trade-requests 도메인**
+- TradeRequestSuccessCode 생성
+- TradeRequest 엔티티에 accept/reject 메서드 추가
+- TradeRequestRepository에 findByTradePostPostIdAndStatus 추가
+- TradeRequestService 구현 (수락 시 게시글 RESERVED 변경, 다른 PENDING 요청 자동 REJECTED)
+- TradeRequestController 구현 (ApiResponse 래핑, Swagger 어노테이션)
+
+**me 도메인**
+- MeSuccessCode 생성
+- MeController 구현 (ApiResponse 래핑, Swagger 어노테이션)
+
+### 트러블슈팅: Docker 포트 충돌
+
+로컬에 MySQL이 설치된 환경에서 `docker compose up -d` 실행 시 3306 포트 충돌이 발생했다. `sudo lsof -nP -iTCP:3306` 명령으로 Docker 프로세스가 포트를 점유 중임을 확인했고, docker-compose.yml 포트를 3307로 임시 변경하여 해결했다. push 전 원상복구 완료.
+
+### 검증 결과
+
+Swagger UI에서 전 도메인 API 동작 확인 완료:
+
+```text
+GET  /api/categories/majors              -> 200 MAJOR_CATEGORIES_FOUND
+GET  /api/categories/{majorCode}/courses -> 200 COURSE_CATEGORIES_FOUND
+POST /api/books                          -> 201 BOOK_CREATED
+GET  /api/books/search                   -> 200 BOOKS_FOUND
+PATCH /api/trade-requests/{id}/accept    -> 200 TRADE_REQUEST_ACCEPTED
+PATCH /api/trade-requests/{id}/reject    -> 200 TRADE_REQUEST_REJECTED
+GET  /api/me/trade-requests/{userId}     -> 200 MY_TRADE_REQUESTS_FOUND
+GET  /api/me/sales/requests/{userId}     -> 200 SALE_REQUESTS_FOUND
+```
