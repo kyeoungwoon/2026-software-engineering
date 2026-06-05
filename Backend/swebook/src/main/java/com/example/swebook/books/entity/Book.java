@@ -36,6 +36,16 @@ public class Book {
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    public static Book create(String title, String author, String publisher, String edition, String isbn) {
+        Book book = new Book();
+        book.title = title;
+        book.author = author;
+        book.publisher = publisher;
+        book.edition = edition;
+        book.isbn = isbn;
+        return book;
+    }
+
     protected Book() {
     }
 
