@@ -61,6 +61,14 @@ public class TradeRequest {
         return tradeRequest;
     }
 
+    public void accept() {
+        this.status = TradeRequestStatus.ACCEPTED;
+    }
+
+    public void reject() {
+        this.status = TradeRequestStatus.REJECTED;
+    }
+
     public Long getRequestId() {
         return requestId;
     }
