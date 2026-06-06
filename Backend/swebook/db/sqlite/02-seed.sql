@@ -12,6 +12,12 @@ INSERT INTO users (user_id, email, nickname, latitude, longitude, radius, create
 (7, 'grace@swebook.local', 'grace', 37.5080500, 126.9619000, 500, '2026-06-01 09:30:00', '2026-06-01 09:30:00'),
 (8, 'henry@swebook.local', 'henry', 37.4979000, 127.0276000, 1500, '2026-06-01 09:35:00', '2026-06-01 09:35:00');
 
+INSERT INTO location_presets (location_id, label, description, latitude, longitude, radius_label, sort_order) VALUES
+('cau', '중앙대학교', '흑석캠퍼스 중심', 37.5043000, 126.9563000, '반경 300m', 1),
+('heukseok', '흑석역', '1번 출구 주변', 37.5089718, 126.9636769, '반경 500m', 2),
+('sangdo', '상도역', '중앙대입구 방면', 37.5029000, 126.9499000, '반경 700m', 3),
+('gangnam', '강남역', '스터디 모임 많은 지역', 37.4979000, 127.0276000, '반경 1.5km', 4);
+
 INSERT INTO categories (category_code, parent_code, type, name) VALUES
 ('100000', NULL, 'MAJOR', '컴퓨터공학'),
 ('101000', NULL, 'MAJOR', '인공지능학과'),

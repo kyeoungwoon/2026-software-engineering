@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS book_images;
 DROP TABLE IF EXISTS trade_posts;
 DROP TABLE IF EXISTS books;
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS location_presets;
 DROP TABLE IF EXISTS users;
 
 PRAGMA foreign_keys = ON;
@@ -26,6 +27,16 @@ CREATE TABLE users (
     CONSTRAINT chk_users_latitude CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
     CONSTRAINT chk_users_longitude CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
     CONSTRAINT chk_users_radius CHECK (radius IS NULL OR radius >= 0)
+);
+
+CREATE TABLE location_presets (
+    location_id VARCHAR(30) PRIMARY KEY,
+    label VARCHAR(50) NOT NULL,
+    description VARCHAR(100) NOT NULL,
+    latitude DECIMAL(10,7) NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+    longitude DECIMAL(10,7) NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+    radius_label VARCHAR(30) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0)
 );
 
 CREATE TABLE categories (
@@ -136,6 +147,7 @@ CREATE TABLE trade_requests (
 );
 
 CREATE INDEX idx_categories_parent_code ON categories (parent_code);
+CREATE INDEX idx_location_presets_sort_order ON location_presets (sort_order);
 CREATE INDEX idx_trade_posts_seller ON trade_posts (seller_id);
 CREATE INDEX idx_trade_posts_book ON trade_posts (book_id);
 CREATE INDEX idx_trade_posts_category_status ON trade_posts (category_code, status);
