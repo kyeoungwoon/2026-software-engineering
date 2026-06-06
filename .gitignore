@@ -216,4 +216,13 @@ dist
 *.wat
 *.xhtml
 
+### Frontend workspace overrides ###
+.turbo/
+!frontend/**/*.css
+!frontend/**/*.html
+!frontend/**/*.js
+!frontend/**/*.jsx
+!frontend/**/*.mjs
+!frontend/**/*.cjs
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,java,web,node,dotenv
