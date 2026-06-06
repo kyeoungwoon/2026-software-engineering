@@ -244,11 +244,10 @@ public class TradePostService {
         }
 
         TradeAvailableTime availableTime = tradeAvailableTimeRepository
-                .findFirstByTradePostPostIdAndStartAtLessThanEqualAndEndAtGreaterThan(
-                        postId,
-                        request.availableTime(),
-                        request.availableTime()
-                )
+                .findByTradePostPostIdOrderByStartAtAsc(postId)
+                .stream()
+                .filter(time -> isRequestedTimeInRange(request.availableTime(), time))
+                .findFirst()
                 .orElseThrow(() -> new BusinessException(TradeRequestErrorCode.AVAILABLE_TIME_NOT_FOUND));
         TradeRequest tradeRequest = tradeRequestRepository.saveAndFlush(
                 TradeRequest.create(buyer, tradePost, availableTime)
@@ -273,6 +272,11 @@ public class TradePostService {
         tradePost.delete(LocalDateTime.now());
 
         return DeleteTradePostResponse.from(tradePost);
+    }
+
+    private boolean isRequestedTimeInRange(LocalDateTime requestedTime, TradeAvailableTime availableTime) {
+        return !requestedTime.isBefore(availableTime.getStartAt())
+                && requestedTime.isBefore(availableTime.getEndAt());
     }
 
     private LocalDateTime validateAvailableTimeEndAfterStart(CreateTradePostRequest.AvailableTimeRequest availableTime) {
