@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Bell,
   ChevronDown,
@@ -82,6 +82,8 @@ function mapNearbyPost(post: NearbyPostItem): FeedItem {
 }
 
 export function HomeRoute() {
+  const navigate = useNavigate();
+  const search = useSearch({ from: "/" });
   const { session, login, logout } = useSession();
   const [locations, setLocations] = useState<LocationPreset[]>([]);
   const [location, setLocation] = useState<LocationPreset | null>(null);
@@ -93,10 +95,16 @@ export function HomeRoute() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<BottomTab>("home");
+  const [activeTab, setActiveTab] = useState<BottomTab>(search.tab ?? "home");
   const [locationOpen, setLocationOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    if (search.tab && search.tab !== "chat") {
+      setActiveTab(search.tab);
+    }
+  }, [search.tab]);
 
   useEffect(() => {
     let ignore = false;
@@ -197,6 +205,20 @@ export function HomeRoute() {
       return;
     }
     setCreateOpen(true);
+  };
+
+  const handleBottomTabChange = (tab: BottomTab) => {
+    if (tab === "chat") {
+      void navigate({ to: "/my/trades", search: { tab: "requests" } });
+      return;
+    }
+
+    setActiveTab(tab);
+    void navigate({
+      to: "/",
+      search: tab === "home" ? {} : { tab },
+      replace: true,
+    });
   };
 
   return (
@@ -366,6 +388,9 @@ export function HomeRoute() {
           nickname={session?.nickname}
           onLoginClick={() => setLoginOpen(true)}
           onHomeClick={() => setActiveTab("home")}
+          onTradesClick={(tab) => {
+            void navigate({ to: "/my/trades", search: { tab } });
+          }}
           onLogout={logout}
         />
       )}
@@ -385,7 +410,7 @@ export function HomeRoute() {
         </div>
       )}
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={handleBottomTabChange} />
 
       <LocationSheet
         open={locationOpen}
@@ -420,6 +445,7 @@ function TabPanel({
   nickname,
   onLoginClick,
   onHomeClick,
+  onTradesClick,
   onLogout,
 }: {
   activeTab: Exclude<BottomTab, "home">;
@@ -427,6 +453,7 @@ function TabPanel({
   nickname?: string;
   onLoginClick: () => void;
   onHomeClick: () => void;
+  onTradesClick: (tab: "requests" | "sales" | "received") => void;
   onLogout: () => void;
 }) {
   if (activeTab === "my") {
@@ -456,6 +483,26 @@ function TabPanel({
           >
             {isLoggedIn ? "로그아웃" : "로그인"}
           </Button>
+          {isLoggedIn && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                size="m"
+                variant="weak"
+                className="w-full"
+                onClick={() => onTradesClick("requests")}
+              >
+                구매 요청
+              </Button>
+              <Button
+                size="m"
+                variant="weak"
+                className="w-full"
+                onClick={() => onTradesClick("sales")}
+              >
+                판매 목록
+              </Button>
+            </div>
+          )}
         </div>
       </section>
     );
@@ -470,9 +517,9 @@ function TabPanel({
     },
     chat: {
       icon: MessageCircle,
-      title: "아직 열린 채팅이 없습니다.",
-      description: "구매 요청이 수락되면 거래 시간과 장소를 조율할 수 있습니다.",
-      button: "홈으로 이동",
+      title: "요청내역으로 이동합니다.",
+      description: "보낸 구매 요청과 내 판매글에 들어온 요청을 확인할 수 있습니다.",
+      button: "요청내역 보기",
     },
   }[activeTab];
   const Icon = tabCopy.icon;
@@ -489,7 +536,12 @@ function TabPanel({
         <p className="m-0 mt-2 text-body-2-regular text-teal-gray-500">
           {tabCopy.description}
         </p>
-        <Button size="m" variant="weak" className="mt-5" onClick={onHomeClick}>
+        <Button
+          size="m"
+          variant="weak"
+          className="mt-5"
+          onClick={activeTab === "chat" ? () => onTradesClick("requests") : onHomeClick}
+        >
           {tabCopy.button}
         </Button>
       </div>

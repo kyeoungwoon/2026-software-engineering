@@ -7,7 +7,7 @@ export type BottomTab = "home" | "favorites" | "chat" | "my";
 const items = [
   { id: "home", label: "홈", icon: Home },
   { id: "favorites", label: "관심목록", icon: Heart },
-  { id: "chat", label: "채팅", icon: MessageCircle },
+  { id: "chat", label: "요청내역", icon: MessageCircle },
   { id: "my", label: "내 정보", icon: User },
 ] satisfies Array<{
   id: BottomTab;

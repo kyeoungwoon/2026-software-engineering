@@ -14,6 +14,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -100,6 +101,47 @@ class TradePostRequestIntegrationTest {
         assertThat(createBody.path("success").asBoolean()).isTrue();
     }
 
+    @Test
+    void getMySales_returnsSellerPostsWithoutDeletedPosts() throws Exception {
+        HttpResponse<String> response = get("/api/me/sales/1");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode sales = objectMapper.readTree(response.body()).path("data");
+        assertThat(sales).hasSize(3);
+        assertThat(StreamSupport.stream(sales.spliterator(), false)
+                .map(item -> item.path("sellerId").asLong())
+                .toList())
+                .containsOnly(1L);
+        assertThat(StreamSupport.stream(sales.spliterator(), false)
+                .map(item -> item.path("postId").asLong())
+                .toList())
+                .contains(1L, 9L, 17L)
+                .doesNotContain(19L);
+    }
+
+    @Test
+    void acceptAndRejectTradeRequests_updatesRequestStatus() throws Exception {
+        HttpResponse<String> acceptResponse = patch("/api/trade-requests/1/accept");
+
+        assertThat(acceptResponse.statusCode()).isEqualTo(200);
+        JsonNode acceptedRequest = objectMapper.readTree(acceptResponse.body()).path("data");
+        assertThat(acceptedRequest.path("status").asText()).isEqualTo("ACCEPTED");
+
+        HttpResponse<String> acceptedPostResponse = get("/api/trade-posts/1");
+        assertThat(acceptedPostResponse.statusCode()).isEqualTo(200);
+        assertThat(objectMapper.readTree(acceptedPostResponse.body())
+                .path("data")
+                .path("status")
+                .asText())
+                .isEqualTo("RESERVED");
+
+        HttpResponse<String> rejectResponse = patch("/api/trade-requests/8/reject");
+
+        assertThat(rejectResponse.statusCode()).isEqualTo(200);
+        JsonNode rejectedRequest = objectMapper.readTree(rejectResponse.body()).path("data");
+        assertThat(rejectedRequest.path("status").asText()).isEqualTo("REJECTED");
+    }
+
     private HttpResponse<String> postJson(String path, String body) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(url(path)))
                 .header("Content-Type", "application/json")
@@ -112,6 +154,14 @@ class TradePostRequestIntegrationTest {
     private HttpResponse<String> get(String path) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(url(path)))
                 .GET()
+                .build();
+
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> patch(String path) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url(path)))
+                .method("PATCH", HttpRequest.BodyPublishers.noBody())
                 .build();
 
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

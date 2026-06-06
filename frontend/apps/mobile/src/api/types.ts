@@ -1,5 +1,7 @@
 export type TradePostStatus = "AVAILABLE" | "RESERVED" | "SOLD";
 
+export type TradeRequestStatus = "PENDING" | "ACCEPTED" | "REJECTED";
+
 export type CategoryType = "MAJOR" | "COURSE";
 
 export type Category = {
@@ -164,6 +166,25 @@ export type CreateTradePostResponse = {
 export type CreateTradeRequestResponse = {
   requestId: number;
   postId: number;
-  requestStatus: "PENDING" | "ACCEPTED" | "REJECTED";
+  requestStatus: TradeRequestStatus;
   createdAt: string;
+};
+
+export type MeTradeRequest = {
+  requestId: number;
+  buyerId: number;
+  buyerNickname: string;
+  sellerId: number;
+  sellerNickname: string;
+  postId: number;
+  bookTitle: string;
+  availableTimeId: number;
+  startAt: string;
+  endAt: string;
+  status: TradeRequestStatus;
+  createdAt: string;
+};
+
+export type TradeRequestActionResponse = MeTradeRequest & {
+  updatedAt: string;
 };

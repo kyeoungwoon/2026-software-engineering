@@ -263,8 +263,9 @@ export function PostDetailRoute() {
             <div className="grid grid-cols-[52px_1fr] gap-3">
               <button
                 type="button"
+                onClick={() => navigate({ to: "/my/trades", search: { tab: "requests" } })}
                 className="flex h-[50px] items-center justify-center rounded-[14px] bg-teal-gray-100 text-teal-gray-700"
-                aria-label="채팅"
+                aria-label="구매 요청 내역"
               >
                 <MessageCircle className="h-5 w-5" aria-hidden="true" />
               </button>

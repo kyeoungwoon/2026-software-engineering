@@ -9,10 +9,12 @@ import type {
   CreateTradePostResponse,
   CreateTradeRequestResponse,
   LocationPreset,
+  MeTradeRequest,
   NearbyTradePosts,
   SeedUser,
   TradePostDetail,
   TradePostListItem,
+  TradeRequestActionResponse,
 } from "./types";
 
 type SwebookEnvelope<T> = {
@@ -44,6 +46,26 @@ function stripEmpty<T extends Record<string, unknown>>(input: T): Partial<T> {
   ) as Partial<T>;
 }
 
+export class SwebookApiError extends Error {
+  code?: string;
+  httpStatus?: string;
+
+  constructor(message: string, options: { code?: string; httpStatus?: string } = {}) {
+    super(formatErrorMessage(message, options));
+    this.name = "SwebookApiError";
+    this.code = options.code;
+    this.httpStatus = options.httpStatus;
+  }
+}
+
+function formatErrorMessage(
+  message: string,
+  options: { code?: string; httpStatus?: string },
+): string {
+  const details = [options.code, options.httpStatus].filter(Boolean).join(" · ");
+  return details ? `${message} (${details})` : message;
+}
+
 function unwrap<T>(payload: SwebookEnvelope<T> | T): T {
   if (
     payload &&
@@ -53,7 +75,10 @@ function unwrap<T>(payload: SwebookEnvelope<T> | T): T {
   ) {
     const envelope = payload as SwebookEnvelope<T>;
     if (!envelope.success) {
-      throw new Error(envelope.errorCode?.message || "요청에 실패했습니다.");
+      throw new SwebookApiError(envelope.errorCode?.message || "요청에 실패했습니다.", {
+        code: envelope.errorCode?.code,
+        httpStatus: envelope.errorCode?.httpStatus,
+      });
     }
 
     return (envelope.data ?? envelope.result) as T;
@@ -63,8 +88,49 @@ function unwrap<T>(payload: SwebookEnvelope<T> | T): T {
 }
 
 async function request<T>(config: Parameters<typeof client.request>[0]): Promise<T> {
-  const response = await client.request<SwebookEnvelope<T> | T>(config);
-  return unwrap<T>(response.data);
+  try {
+    const response = await client.request<SwebookEnvelope<T> | T>(config);
+    return unwrap<T>(response.data);
+  } catch (error) {
+    throw toSwebookApiError(error);
+  }
+}
+
+function toSwebookApiError(error: unknown): Error {
+  if (error instanceof SwebookApiError) {
+    return error;
+  }
+
+  if (error && typeof error === "object" && "response" in error) {
+    const response = (error as {
+      response?: {
+        data?: SwebookEnvelope<unknown>;
+        status?: number;
+        statusText?: string;
+      };
+    }).response;
+    const data = response?.data;
+    const errorCode = data && typeof data === "object" ? data.errorCode : undefined;
+
+    if (errorCode) {
+      return new SwebookApiError(errorCode.message || "요청에 실패했습니다.", {
+        code: errorCode.code,
+        httpStatus: errorCode.httpStatus,
+      });
+    }
+
+    if (response?.status) {
+      return new SwebookApiError("서버 요청에 실패했습니다.", {
+        httpStatus: `${response.status} ${response.statusText ?? ""}`.trim(),
+      });
+    }
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error("요청에 실패했습니다.");
 }
 
 export function getTradePosts(): Promise<TradePostListItem[]> {
@@ -187,5 +253,40 @@ export function createTradeRequest(params: {
       userId: params.userId,
       availableTime: params.availableTime,
     },
+  });
+}
+
+export function getMyTradeRequests(userId: number): Promise<MeTradeRequest[]> {
+  return request<MeTradeRequest[]>({
+    method: "GET",
+    url: `/api/me/trade-requests/${userId}`,
+  });
+}
+
+export function getMySales(userId: number): Promise<TradePostListItem[]> {
+  return request<TradePostListItem[]>({
+    method: "GET",
+    url: `/api/me/sales/${userId}`,
+  });
+}
+
+export function getSalesRequests(userId: number): Promise<MeTradeRequest[]> {
+  return request<MeTradeRequest[]>({
+    method: "GET",
+    url: `/api/me/sales/requests/${userId}`,
+  });
+}
+
+export function acceptTradeRequest(requestId: number): Promise<TradeRequestActionResponse> {
+  return request<TradeRequestActionResponse>({
+    method: "PATCH",
+    url: `/api/trade-requests/${requestId}/accept`,
+  });
+}
+
+export function rejectTradeRequest(requestId: number): Promise<TradeRequestActionResponse> {
+  return request<TradeRequestActionResponse>({
+    method: "PATCH",
+    url: `/api/trade-requests/${requestId}/reject`,
   });
 }

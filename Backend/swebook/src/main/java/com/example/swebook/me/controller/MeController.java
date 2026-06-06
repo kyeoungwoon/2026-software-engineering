@@ -4,6 +4,7 @@ import com.example.swebook.global.response.ApiResponse;
 import com.example.swebook.me.dto.MeTradeRequestResponse;
 import com.example.swebook.me.error.MeSuccessCode;
 import com.example.swebook.me.service.MeService;
+import com.example.swebook.tradeposts.dto.TradePostResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +38,21 @@ public class MeController {
         return ApiResponse.success(
                 meService.getMyTradeRequests(userId),
                 MeSuccessCode.MY_TRADE_REQUESTS_FOUND
+        );
+    }
+
+    @GetMapping("/sales/{userId}")
+    @Operation(
+            summary = "내 판매 목록 조회",
+            description = "판매자 입장에서 내가 등록한 판매글 목록을 최신순으로 조회합니다."
+    )
+    public ApiResponse<List<TradePostResponse>> getMySales(
+            @Parameter(description = "사용자 ID", example = "1")
+            @PathVariable Long userId
+    ) {
+        return ApiResponse.success(
+                meService.getMySales(userId),
+                MeSuccessCode.MY_SALES_FOUND
         );
     }
 
