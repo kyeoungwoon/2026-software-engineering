@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "@umc/ui/styles.css";
+
+@source "./**/*.{ts,tsx}";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+:root {
+  color: var(--color-ds-text-default);
+  background: #eef2f2;
+  font-family:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.mobile-scrollbar {
+  scrollbar-width: none;
+}
+
+.mobile-scrollbar::-webkit-scrollbar {
+  display: none;
+}

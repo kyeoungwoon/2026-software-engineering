@@ -1,0 +1,30 @@
+{
+  "name": "@swebook/mobile",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "dev": "vite --host 0.0.0.0",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.139.8",
+    "@umc/api": "workspace:*",
+    "@umc/auth-core": "workspace:*",
+    "@umc/ui": "workspace:*",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^6.0.3",
+    "vite": "^7.2.7"
+  }
+}
