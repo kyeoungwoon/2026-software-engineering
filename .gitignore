@@ -218,6 +218,11 @@ dist
 
 ### Frontend workspace overrides ###
 .turbo/
+
+### IntelliJ IDEA ###
+.idea/*
+!.idea/runConfigurations/
+!.idea/runConfigurations/**
 !frontend/**/*.css
 !frontend/**/*.html
 !frontend/**/*.js
