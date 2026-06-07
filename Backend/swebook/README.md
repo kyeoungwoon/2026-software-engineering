@@ -21,11 +21,7 @@ Spring Boot 기반 SWEBook 백엔드 프로젝트입니다.
 data/swebook.sqlite
 ```
 
-Spring Boot datasource는 기본적으로 이 파일을 바라봅니다.
-
-```properties
-spring.datasource.url=jdbc:sqlite:${SWEBOOK_DB_PATH:./data/swebook.sqlite}
-```
+Spring Boot datasource는 기본적으로 이 파일을 자동 탐색해 사용합니다. `Backend/swebook`에서 실행해도, 레포 루트에서 실행해도 `Backend/swebook/data/swebook.sqlite`를 찾도록 구성되어 있습니다.
 
 다른 DB 파일을 임시로 쓰고 싶으면 `SWEBOOK_DB_PATH`를 지정하면 됩니다.
 

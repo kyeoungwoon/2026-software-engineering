@@ -204,6 +204,14 @@ export function HomeRoute() {
       setLoginOpen(true);
       return;
     }
+    if (!location) {
+      setError("동네 정보를 불러오지 못해 판매글을 등록할 수 없습니다. 백엔드 DB 연결 상태를 확인한 뒤 새로고침해 주세요.");
+      return;
+    }
+    if (courses.length === 0) {
+      setError("과목 정보를 불러오지 못해 판매글을 등록할 수 없습니다. 백엔드 응답을 확인한 뒤 다시 시도해 주세요.");
+      return;
+    }
     setCreateOpen(true);
   };
 
