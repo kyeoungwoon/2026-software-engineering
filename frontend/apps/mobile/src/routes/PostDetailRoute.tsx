@@ -10,13 +10,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import { Button, cn } from "@umc/ui";
+import { Button, CtaModal, cn } from "@umc/ui";
 
 import {
   createTradeRequest,
   getAvailableTimes,
   getTradePost,
   getUsers,
+  SwebookApiError,
 } from "../api/swebook";
 import type { AvailableTime, SeedUser, TradePostDetail } from "../api/types";
 import { BookCover } from "../components/BookCover";
@@ -36,6 +37,7 @@ export function PostDetailRoute() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRequesting, setIsRequesting] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [duplicateRequestOpen, setDuplicateRequestOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -116,6 +118,11 @@ export function PostDetailRoute() {
       const available = await getAvailableTimes(post.postId);
       setTimes(available.availableTimes);
     } catch (requestError) {
+      if (isConflictError(requestError)) {
+        setDuplicateRequestOpen(true);
+        return;
+      }
+
       setMessage(
         requestError instanceof Error
           ? requestError.message
@@ -294,8 +301,31 @@ export function PostDetailRoute() {
         onOpenChange={setLoginOpen}
         onLogin={login}
       />
+      <CtaModal
+        open={duplicateRequestOpen}
+        title="이미 구매를 요청한 게시글이에요!"
+        cancelText="닫기"
+        confirmText="구매 요청 보러 가기"
+        content={null}
+        size="medium"
+        variant="warning"
+        onOpenChange={setDuplicateRequestOpen}
+        onCancel={() => setDuplicateRequestOpen(false)}
+        onConfirm={() => {
+          setDuplicateRequestOpen(false);
+          void navigate({ to: "/my/trades", search: { tab: "requests" } });
+        }}
+      />
     </main>
   );
+}
+
+function isConflictError(error: unknown) {
+  if (error instanceof SwebookApiError) {
+    return error.httpStatus?.startsWith("409") || error.code?.includes("_409_");
+  }
+
+  return false;
 }
 
 function InfoRow({

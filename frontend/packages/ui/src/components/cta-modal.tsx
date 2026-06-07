@@ -14,7 +14,7 @@ type CtaModalWidthStyle = React.CSSProperties & {
 export interface CtaModalProps {
   open: boolean;
   title: string;
-  content: React.ReactNode;
+  content?: React.ReactNode;
   cancelText?: string;
   confirmText: string;
   variant?: CtaModalVariant;
@@ -65,6 +65,7 @@ export function CtaModal({
       : "bg-ds-primary text-white hover:bg-ds-primary-strong disabled:bg-teal-300";
 
   const hasCancel = Boolean(cancelText);
+  const hasContent = content !== undefined && content !== null && content !== "";
 
   return (
     <Modal.Root
@@ -85,9 +86,14 @@ export function CtaModal({
               <Modal.Title className="text-heading-6-semibold text-teal-gray-900 m-0">
                 {title}
               </Modal.Title>
-              <Modal.Description className="text-body-2-regular text-teal-gray-600 m-0 whitespace-pre-line">
-                {content}
-              </Modal.Description>
+              {hasContent && (
+                <Modal.Description className="text-body-2-regular text-teal-gray-600 m-0 whitespace-pre-line">
+                  {content}
+                </Modal.Description>
+              )}
+              {!hasContent && (
+                <Modal.Description className="sr-only">{title}</Modal.Description>
+              )}
             </div>
 
             <div
@@ -100,7 +106,7 @@ export function CtaModal({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="text-label-1-medium bg-teal-gray-100 text-teal-gray-800 hover:bg-teal-gray-150 inline-flex min-h-12 items-center justify-center rounded-[12px] px-4 transition-colors focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="text-label-1-medium bg-teal-gray-100 text-teal-gray-800 hover:bg-teal-gray-150 inline-flex min-h-12 items-center justify-center rounded-[12px] px-4 whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   {cancelText}
                 </button>
@@ -109,7 +115,7 @@ export function CtaModal({
                 type="button"
                 onClick={onConfirm}
                 className={cn(
-                  "text-label-1-medium inline-flex min-h-12 items-center justify-center rounded-[12px] px-4 transition-colors focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:outline-none",
+                  "text-label-1-medium inline-flex min-h-12 items-center justify-center rounded-[12px] px-4 whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:outline-none",
                   confirmButtonClassName,
                 )}
               >
