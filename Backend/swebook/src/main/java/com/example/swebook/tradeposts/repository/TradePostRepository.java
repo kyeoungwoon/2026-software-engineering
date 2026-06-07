@@ -13,6 +13,9 @@ public interface TradePostRepository extends JpaRepository<TradePost, Long> {
     List<TradePost> findByDeletedAtIsNullOrderByCreatedAtDesc();
 
     @EntityGraph(attributePaths = {"seller", "book", "category"})
+    List<TradePost> findBySellerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long sellerId);
+
+    @EntityGraph(attributePaths = {"seller", "book", "category"})
     List<TradePost> findByDeletedAtIsNullAndCategoryCategoryCode(String categoryCode);
 
     @EntityGraph(attributePaths = {"seller", "book", "category"})

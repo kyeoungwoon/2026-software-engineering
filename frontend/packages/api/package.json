@@ -1,0 +1,28 @@
+{
+  "name": "@umc/api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./contracts": "./src/contracts/index.ts",
+    "./contracts/admin": "./src/contracts/admin/index.ts",
+    "./contracts/admin/*": "./src/contracts/admin/*.ts",
+    "./contracts/public": "./src/contracts/public/index.ts",
+    "./contracts/public/*": "./src/contracts/public/*.ts",
+    "./endpoints/admin": "./src/endpoints/admin/index.ts",
+    "./endpoints/admin/*": "./src/endpoints/admin/*.ts",
+    "./endpoints/public": "./src/endpoints/public/index.ts",
+    "./endpoints/public/*": "./src/endpoints/public/*.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "axios": "1.13.5"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
