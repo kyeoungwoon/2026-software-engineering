@@ -259,7 +259,7 @@ export function CreatePostSheet({
             <select
               value={categoryCode}
               onChange={(event) => setCategoryCode(event.target.value)}
-              className="h-11 w-full rounded-[12px] border border-teal-gray-200 bg-white px-3 text-label-2-medium text-teal-gray-800 outline-none focus:border-teal-400"
+              className="mobile-native-select h-12 w-full rounded-[12px] border border-teal-gray-200 bg-white px-3 text-[16px] leading-[1.45] font-medium text-teal-gray-800 outline-none focus:border-teal-400"
             >
               {courses.map((course) => (
                 <option key={course.categoryCode} value={course.categoryCode}>

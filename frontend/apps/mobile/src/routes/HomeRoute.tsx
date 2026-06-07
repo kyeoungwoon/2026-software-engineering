@@ -1,8 +1,8 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Bell,
+  Check,
   ChevronDown,
-  Heart,
   MapPin,
   MessageCircle,
   Search,
@@ -31,6 +31,7 @@ import type {
 } from "../api/types";
 import { BookCover } from "../components/BookCover";
 import { BottomNav, type BottomTab } from "../components/BottomNav";
+import { BottomSheet } from "../components/BottomSheet";
 import { CreatePostSheet } from "../components/CreatePostSheet";
 import { LocationSheet } from "../components/LocationSheet";
 import { LoginModal } from "../components/LoginModal";
@@ -99,6 +100,8 @@ export function HomeRoute() {
   const [locationOpen, setLocationOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (search.tab && search.tab !== "chat") {
@@ -221,6 +224,10 @@ export function HomeRoute() {
       return;
     }
 
+    if (tab !== "home") {
+      setSearchOpen(false);
+      setQuery("");
+    }
     setActiveTab(tab);
     void navigate({
       to: "/",
@@ -232,7 +239,12 @@ export function HomeRoute() {
   return (
     <main className="mx-auto flex h-dvh max-w-[430px] flex-col bg-white text-teal-gray-900 shadow-drop-neutral-1">
       <header className="sticky top-0 z-20 border-b border-teal-gray-100 bg-white/95 px-5 pt-4 pb-4 backdrop-blur">
-        <div className="mb-3 flex items-center justify-between">
+        <div
+          className={cn(
+            "flex items-center justify-between",
+            activeTab === "home" && searchOpen ? "mb-3" : "",
+          )}
+        >
           <button
             type="button"
             onClick={() => setLocationOpen(true)}
@@ -266,10 +278,31 @@ export function HomeRoute() {
             >
               <Bell className="h-5 w-5" aria-hidden="true" />
             </button>
+            {activeTab === "home" && (
+              <button
+                type="button"
+                aria-label={searchOpen ? "검색 닫기" : "검색 열기"}
+                aria-pressed={searchOpen}
+                onClick={() => {
+                  setSearchOpen((current) => {
+                    if (current) setQuery("");
+                    return !current;
+                  });
+                }}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full transition",
+                  searchOpen
+                    ? "bg-teal-50 text-teal-700"
+                    : "text-teal-gray-600 hover:bg-teal-gray-50",
+                )}
+              >
+                <Search className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
 
-        {activeTab === "home" && (
+        {activeTab === "home" && searchOpen && (
           <InputBox
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -315,6 +348,7 @@ export function HomeRoute() {
             </div>
             <button
               type="button"
+              onClick={() => setFilterOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-gray-50 text-teal-gray-600"
               aria-label="필터"
             >
@@ -395,7 +429,6 @@ export function HomeRoute() {
           isLoggedIn={Boolean(session)}
           nickname={session?.nickname}
           onLoginClick={() => setLoginOpen(true)}
-          onHomeClick={() => setActiveTab("home")}
           onTradesClick={(tab) => {
             void navigate({ to: "/my/trades", search: { tab } });
           }}
@@ -443,7 +476,61 @@ export function HomeRoute() {
           onOpenChange={setCreateOpen}
         />
       )}
+      <CourseFilterSheet
+        open={filterOpen}
+        courses={courses}
+        selectedCourseCode={selectedCourseCode}
+        onSelect={(nextCourseCode) => {
+          setSelectedCourseCode(nextCourseCode);
+          setFilterOpen(false);
+        }}
+        onOpenChange={setFilterOpen}
+      />
     </main>
+  );
+}
+
+function CourseFilterSheet({
+  open,
+  courses,
+  selectedCourseCode,
+  onSelect,
+  onOpenChange,
+}: {
+  open: boolean;
+  courses: Category[];
+  selectedCourseCode: string;
+  onSelect: (courseCode: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const options = [{ categoryCode: "all", name: "전체 과목" }, ...courses];
+
+  return (
+    <BottomSheet open={open} title="과목 필터" onOpenChange={onOpenChange}>
+      <div className="mobile-scrollbar max-h-[56dvh] overflow-y-auto px-5 py-3">
+        <div className="space-y-2 pb-3">
+          {options.map((course) => {
+            const active = selectedCourseCode === course.categoryCode;
+            return (
+              <button
+                key={course.categoryCode}
+                type="button"
+                onClick={() => onSelect(course.categoryCode)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[14px] border px-4 py-3 text-left transition",
+                  active
+                    ? "border-teal-500 bg-teal-50 text-teal-800"
+                    : "border-teal-gray-150 bg-white text-teal-gray-800 hover:bg-teal-gray-50",
+                )}
+              >
+                <span className="text-label-1-medium">{course.name}</span>
+                {active && <Check className="h-5 w-5 text-teal-600" aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -452,7 +539,6 @@ function TabPanel({
   isLoggedIn,
   nickname,
   onLoginClick,
-  onHomeClick,
   onTradesClick,
   onLogout,
 }: {
@@ -460,7 +546,6 @@ function TabPanel({
   isLoggedIn: boolean;
   nickname?: string;
   onLoginClick: () => void;
-  onHomeClick: () => void;
   onTradesClick: (tab: "requests" | "sales" | "received") => void;
   onLogout: () => void;
 }) {
@@ -516,21 +601,7 @@ function TabPanel({
     );
   }
 
-  const tabCopy = {
-    favorites: {
-      icon: Heart,
-      title: "관심목록이 비어 있습니다.",
-      description: "마음에 드는 전공서적을 발견하면 관심목록에서 다시 확인할 수 있습니다.",
-      button: "매물 둘러보기",
-    },
-    chat: {
-      icon: MessageCircle,
-      title: "요청내역으로 이동합니다.",
-      description: "보낸 구매 요청과 내 판매글에 들어온 요청을 확인할 수 있습니다.",
-      button: "요청내역 보기",
-    },
-  }[activeTab];
-  const Icon = tabCopy.icon;
+  const Icon = MessageCircle;
 
   return (
     <section className="flex flex-1 items-center justify-center px-5 pb-24">
@@ -539,18 +610,18 @@ function TabPanel({
           <Icon className="h-7 w-7" aria-hidden="true" />
         </span>
         <h1 className="m-0 mt-5 text-heading-7-semibold text-teal-gray-900">
-          {tabCopy.title}
+          요청내역으로 이동합니다.
         </h1>
         <p className="m-0 mt-2 text-body-2-regular text-teal-gray-500">
-          {tabCopy.description}
+          보낸 구매 요청과 내 판매글에 들어온 요청을 확인할 수 있습니다.
         </p>
         <Button
           size="m"
           variant="weak"
           className="mt-5"
-          onClick={activeTab === "chat" ? () => onTradesClick("requests") : onHomeClick}
+          onClick={() => onTradesClick("requests")}
         >
-          {tabCopy.button}
+          요청내역 보기
         </Button>
       </div>
     </section>

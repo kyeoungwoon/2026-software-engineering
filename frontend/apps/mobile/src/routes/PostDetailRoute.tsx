@@ -19,7 +19,12 @@ import {
   getUsers,
   SwebookApiError,
 } from "../api/swebook";
-import type { AvailableTime, SeedUser, TradePostDetail } from "../api/types";
+import type {
+  AvailableTime,
+  SeedUser,
+  TradePostDetail,
+  TradePostStatus,
+} from "../api/types";
 import { BookCover } from "../components/BookCover";
 import { LoginModal } from "../components/LoginModal";
 import { StatusBadge } from "../components/StatusBadge";
@@ -86,14 +91,19 @@ export function PostDetailRoute() {
     [selectedTime, times],
   );
 
-  const requestDisabledReason = (() => {
-    if (!post) return "판매글을 불러오는 중입니다.";
-    if (post.status !== "AVAILABLE") return "현재 요청할 수 없는 매물입니다.";
-    if (!selectedAvailableTime) return "거래 시간을 선택해 주세요.";
-    if (selectedAvailableTime.isRequested) return "이미 요청된 시간입니다.";
-    if (session?.userId === post.seller.userId) return "내 판매글에는 요청할 수 없습니다.";
-    return "";
-  })();
+  const isOwnPost = Boolean(post && session?.userId === post.seller.userId);
+  const requestDisabledReason = getRequestDisabledReason({
+    isOwnPost,
+    post,
+    selectedAvailableTime,
+  });
+  const requestButtonLabel = getRequestButtonLabel({
+    isOwnPost,
+    isRequesting,
+    postStatus: post?.status,
+    requestDisabledReason,
+    sessionExists: Boolean(session),
+  });
 
   const handleRequest = async () => {
     if (!post) return;
@@ -283,10 +293,10 @@ export function PostDetailRoute() {
                 isLoading={isRequesting}
                 onClick={handleRequest}
               >
-                {session ? "구매 요청하기" : "로그인하고 요청하기"}
+                {requestButtonLabel}
               </Button>
             </div>
-            {requestDisabledReason && session && (
+            {requestDisabledReason && session && !isOwnPost && (
               <p className="m-0 mt-2 text-center text-caption-2-regular text-teal-gray-500">
                 {requestDisabledReason}
               </p>
@@ -326,6 +336,55 @@ function isConflictError(error: unknown) {
   }
 
   return false;
+}
+
+function getRequestDisabledReason({
+  isOwnPost,
+  post,
+  selectedAvailableTime,
+}: {
+  isOwnPost: boolean;
+  post: TradePostDetail | null;
+  selectedAvailableTime: AvailableTime | undefined;
+}) {
+  if (!post) return "판매글을 불러오는 중입니다.";
+  if (isOwnPost) return "내 판매글입니다.";
+  if (post.status === "RESERVED") {
+    return "판매자가 다른 구매 요청을 수락해 예약중입니다.";
+  }
+  if (post.status === "SOLD") {
+    return "이미 거래 완료된 매물입니다.";
+  }
+  if (!selectedAvailableTime) return "판매자가 등록한 거래 가능 시간이 없습니다.";
+  if (selectedAvailableTime.isRequested) {
+    return "선택한 거래 시간은 이미 다른 요청에 사용되었습니다.";
+  }
+
+  return "";
+}
+
+function getRequestButtonLabel({
+  isOwnPost,
+  isRequesting,
+  postStatus,
+  requestDisabledReason,
+  sessionExists,
+}: {
+  isOwnPost: boolean;
+  isRequesting: boolean;
+  postStatus: TradePostStatus | undefined;
+  requestDisabledReason: string;
+  sessionExists: boolean;
+}) {
+  if (!sessionExists) return "로그인하고 요청하기";
+  if (isRequesting) return "요청 중";
+  if (isOwnPost) return "내 판매글입니다";
+  if (postStatus === "RESERVED") return "예약중인 매물입니다";
+  if (postStatus === "SOLD") return "거래 완료된 매물입니다";
+  if (requestDisabledReason.includes("거래 가능 시간")) return "거래 가능 시간 없음";
+  if (requestDisabledReason.includes("이미 다른 요청")) return "이미 요청된 시간입니다";
+  if (requestDisabledReason) return "구매 요청 불가";
+  return "구매 요청하기";
 }
 
 function InfoRow({

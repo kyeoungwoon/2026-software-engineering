@@ -15,6 +15,7 @@ import { Button, cn } from "@umc/ui";
 
 import {
   acceptTradeRequest,
+  getTradePost,
   getMySales,
   getMyTradeRequests,
   getSalesRequests,
@@ -24,9 +25,11 @@ import {
 import type {
   MeTradeRequest,
   SeedUser,
+  TradePostDetail,
   TradePostListItem,
   TradeRequestStatus,
 } from "../api/types";
+import { BookCover } from "../components/BookCover";
 import { BottomNav, type BottomTab } from "../components/BottomNav";
 import { LoginModal } from "../components/LoginModal";
 import { StatusBadge } from "../components/StatusBadge";
@@ -62,6 +65,7 @@ export function MyTradesRoute() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [myRequests, setMyRequests] = useState<MeTradeRequest[]>([]);
   const [mySales, setMySales] = useState<TradePostListItem[]>([]);
+  const [saleCoversByPostId, setSaleCoversByPostId] = useState<Record<number, string | null>>({});
   const [salesRequests, setSalesRequests] = useState<MeTradeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [actingRequestId, setActingRequestId] = useState<number | null>(null);
@@ -97,8 +101,10 @@ export function MyTradesRoute() {
         getMySales(session.userId),
         getSalesRequests(session.userId),
       ]);
+      const nextSaleCovers = await loadSaleCovers(nextMySales);
       setMyRequests(nextMyRequests);
       setMySales(nextMySales);
+      setSaleCoversByPostId(nextSaleCovers);
       setSalesRequests(nextSalesRequests);
     } catch (loadError) {
       setError(
@@ -265,6 +271,7 @@ export function MyTradesRoute() {
           {!isLoading && activeView === "sales" && (
             <SalesList
               sales={mySales}
+              saleCoversByPostId={saleCoversByPostId}
               requestCountByPostId={requestCountByPostId}
               pendingCountByPostId={pendingCountByPostId}
               onOpenRequests={() => setTradeView("received")}
@@ -404,11 +411,13 @@ function ReceivedRequestList({
 
 function SalesList({
   sales,
+  saleCoversByPostId,
   requestCountByPostId,
   pendingCountByPostId,
   onOpenRequests,
 }: {
   sales: TradePostListItem[];
+  saleCoversByPostId: Record<number, string | null>;
   requestCountByPostId: Record<number, number>;
   pendingCountByPostId: Record<number, number>;
   onOpenRequests: () => void;
@@ -433,20 +442,29 @@ function SalesList({
             key={post.postId}
             className="rounded-[16px] border border-teal-gray-150 bg-white px-4 py-4"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="m-0 line-clamp-2 text-label-1-semibold text-teal-gray-900">
-                  {post.bookTitle}
-                </h2>
-                <p className="m-0 mt-1 text-caption-1-medium text-teal-gray-500">
-                  {post.categoryName} · {post.placeName}
+            <div className="flex items-start gap-3">
+              <BookCover
+                src={saleCoversByPostId[post.postId]}
+                title={post.bookTitle}
+                size="sm"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h2 className="m-0 line-clamp-2 text-label-1-semibold text-teal-gray-900">
+                      {post.bookTitle}
+                    </h2>
+                    <p className="m-0 mt-1 text-caption-1-medium text-teal-gray-500">
+                      {post.categoryName} · {post.placeName}
+                    </p>
+                  </div>
+                  <StatusBadge status={post.status} />
+                </div>
+                <p className="m-0 mt-3 text-label-1-semibold text-teal-gray-900">
+                  {formatPrice(post.price)}
                 </p>
               </div>
-              <StatusBadge status={post.status} />
             </div>
-            <p className="m-0 mt-3 text-label-1-semibold text-teal-gray-900">
-              {formatPrice(post.price)}
-            </p>
             <div className="mt-4 flex items-center justify-between rounded-[14px] bg-teal-gray-50 px-3 py-3">
               <div>
                 <p className="m-0 text-label-2-medium text-teal-gray-800">
@@ -477,6 +495,25 @@ function SalesList({
       })}
     </div>
   );
+}
+
+async function loadSaleCovers(sales: TradePostListItem[]) {
+  const entries = await Promise.all(
+    sales.map(async (post) => {
+      try {
+        const detail = await getTradePost(post.postId);
+        return [post.postId, getCoverImageUrl(detail)] as const;
+      } catch {
+        return [post.postId, null] as const;
+      }
+    }),
+  );
+
+  return Object.fromEntries(entries) as Record<number, string | null>;
+}
+
+function getCoverImageUrl(post: TradePostDetail) {
+  return post.images.find((image) => image.isCover)?.imageUrl ?? post.images[0]?.imageUrl ?? null;
 }
 
 function RequestCard({

@@ -9,7 +9,7 @@ import { HomeRoute } from "./routes/HomeRoute";
 import { MyTradesRoute } from "./routes/MyTradesRoute";
 import { PostDetailRoute } from "./routes/PostDetailRoute";
 
-const homeTabs = new Set(["home", "favorites", "chat", "my"]);
+const homeTabs = new Set(["home", "chat", "my"]);
 const tradeTabs = new Set(["requests", "sales", "received"]);
 
 const rootRoute = createRootRoute({
@@ -19,9 +19,9 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  validateSearch: (search): { tab?: "home" | "favorites" | "chat" | "my" } => {
+  validateSearch: (search): { tab?: "home" | "chat" | "my" } => {
     const tab = typeof search.tab === "string" && homeTabs.has(search.tab)
-      ? search.tab as "home" | "favorites" | "chat" | "my"
+      ? search.tab as "home" | "chat" | "my"
       : undefined;
     return tab ? { tab } : {};
   },

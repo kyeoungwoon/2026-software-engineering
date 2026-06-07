@@ -1,12 +1,11 @@
-import { Home, MessageCircle, User, Heart } from "lucide-react";
+import { Home, MessageCircle, User } from "lucide-react";
 
 import { cn } from "@umc/ui";
 
-export type BottomTab = "home" | "favorites" | "chat" | "my";
+export type BottomTab = "home" | "chat" | "my";
 
 const items = [
   { id: "home", label: "홈", icon: Home },
-  { id: "favorites", label: "관심목록", icon: Heart },
   { id: "chat", label: "요청내역", icon: MessageCircle },
   { id: "my", label: "내 정보", icon: User },
 ] satisfies Array<{
@@ -22,7 +21,7 @@ type BottomNavProps = {
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
-    <nav className="grid min-h-[76px] grid-cols-4 border-t border-teal-gray-150 bg-white px-3 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))]">
+    <nav className="grid min-h-[76px] grid-cols-3 border-t border-teal-gray-150 bg-white px-3 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))]">
       {items.map((item) => {
         const Icon = item.icon;
         const active = activeTab === item.id;

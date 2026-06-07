@@ -38,6 +38,12 @@ select {
   font: inherit;
 }
 
+.mobile-native-select,
+.mobile-native-select option {
+  font-size: 16px;
+  line-height: 1.45;
+}
+
 button {
   cursor: pointer;
 }
